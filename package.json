@@ -1,0 +1,19 @@
+{
+  "name": "infiniteterrain",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "atlas-vector-noise": "^1.0.0",
+    "perlin.js": "^1.0.0",
+    "sentencer": "^0.2.1",
+    "simplex-noise": "^2.4.0",
+    "socket.io": "^2.3.0"
+  }
+}
