@@ -1,17 +1,19 @@
-var socket = io();
+var socket = io({transports: ['websocket'], upgrade: false});
+var ctx
 var tiles = []
 var chunks = []
 var playersInView = []
 var mapLoaded = false
 var px = getRandomInt(100, 150)
 var py = getRandomInt(100, 150)
-var mapmaxX = 74,
-    mapmaxY = 58
+var psx = 64
+var psy = 48
+var mapGraphics
 var leftbound = px - 65,
     rightbound = px + 65,
     upbound = py - 49,
     lowbound = py + 49
-// the snake is divided into small segments, which are drawn and edited on each 'draw' call
+
 let direction = 'right';
 const dirt = '#6b4433',
     grass = '#377d1b',
@@ -24,16 +26,18 @@ function getRandomInt(min, max) {
 }
 function setup() {
     createCanvas(640, 480);
-    frameRate(60);
+    mapGraphics = createGraphics(640, 480)
+    frameRate(30);
     stroke(255);
     strokeWeight(10);
+    ctx = document.getElementsByClassName("p5Canvas")[0].getContext('2d');
 }
 function draw() {
-    background(255);
-    render();
+    //background(255);
+    image(mapGraphics, 0, 0)
+    renderPlayers();
 }
-
-function render() {
+function renderMap() {
     for(var y = 0; y < tiles.length; y++) {
         var absolutey = py - y - 48
         for(var x = 0; x < tiles[y].length; x++) {
@@ -44,44 +48,56 @@ function render() {
             } else if(tiles[y][x].noise === 999 && tiles[y][x].id !== socket.id) {
                 stroke('red')
             } else*/ if(tiles[y][x].noise > 90 && tiles[y][x].noise <= 100) {
-                stroke(dirt)
+                mapGraphics.stroke(dirt)
+                mapGraphics.fill(dirt)
             } else if(tiles[y][x].noise > 80 && tiles[y][x].noise <= 90) {
-                stroke(dirt)
+                mapGraphics.stroke(dirt)
+                mapGraphics.fill(dirt)
             } else if(tiles[y][x].noise > 70 && tiles[y][x].noise <= 80) {
-                stroke(grass)
+                mapGraphics.stroke(grass)
+                mapGraphics.fill(grass)
             } else if(tiles[y][x].noise > 60 && tiles[y][x].noise <= 70) {
-                stroke(rock)
+                mapGraphics.stroke(rock)
+                mapGraphics.fill(rock)
             } else if(tiles[y][x].noise > 50 && tiles[y][x].noise <= 60) {
-                stroke(grass)
+                mapGraphics.stroke(grass)
+                mapGraphics.fill(grass)
             } else if(tiles[y][x].noise > 40 && tiles[y][x].noise <= 50) {
-                stroke(sand)
+                mapGraphics.stroke(sand)
+                mapGraphics.fill(sand)
             } else if(tiles[y][x].noise > 30 && tiles[y][x].noise <= 40) {
-                stroke(water)
+                mapGraphics.stroke(water)
+                mapGraphics.fill(water)
             } else if(tiles[y][x].noise > 20 && tiles[y][x].noise <= 30) {
-                stroke(water)
+                mapGraphics.stroke(water)
+                mapGraphics.fill(water)
             } else if(tiles[y][x].noise > 10 && tiles[y][x].noise <= 20) {
-                stroke(water)
+                mapGraphics.stroke(water)
+                mapGraphics.fill(water)
             } else if(tiles[y][x].noise <= 10) {
-                stroke(water)
+                mapGraphics.stroke(water)
+                mapGraphics.fill(water)
             }
             //stroke(tiles[y][x].noise.r, tiles[y][x].noise.g, tiles[y][x].noise.b)
             //fill(tiles[y][x].noise)
 
-            rect(x * 5, y * 5, 5, 5)
+            mapGraphics.rect(x * 5, y * 5, 5, 5)
         }
     }
 
+}
+function renderPlayers() {
     for(var i = 0; i < playersInView.length; i++) {
         if(playersInView[i].id === socket.id) {
             stroke(255)
+            //rect(psx, psy, 5)
         } else {
             stroke('red')
-        }
 
-        rect((playersInView[i].x - leftbound) * 5, (playersInView[i].y - upbound) * 5, 5, 5)
+        }
+        rect((playersInView[i].x - leftbound) * 5, (playersInView[i].y - upbound) * 5, 5)
     }
 }
-
 document.onkeydown = checkKey;
 
 function checkKey(e) {
@@ -90,21 +106,25 @@ function checkKey(e) {
 
     if (e.keyCode == '38') {
         py--
+        psy -= 5
         socket.emit("updatePos", px, py)
         // up arrow
     }
     else if (e.keyCode == '40') {
         py++
+        psy += 5
         socket.emit("updatePos", px, py)
         // down arrow
     }
     else if (e.keyCode == '37') {
         px--
+        psx -= 5
         socket.emit("updatePos", px, py)
         // left arrow
     }
     else if (e.keyCode == '39') {
         px++
+        psx += 5
         socket.emit("updatePos", px, py)
         // right arrow
     }
@@ -180,7 +200,8 @@ socket.on("loadMap", function(newMap, direction){
     mapLoaded = true
     console.log("received map")
     tiles = newMap
-    //console.log(tiles)
+    renderMap()
+    console.log(tiles)
 })
 socket.on("requestNewPlayerPos", function(){
     socket.emit("needNewPlayerPos", px, py, leftbound, rightbound, upbound, lowbound)
