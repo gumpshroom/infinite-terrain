@@ -1,5 +1,5 @@
 var socket = io({transports: ['websocket'], upgrade: false});
-var ctx
+var keys = []
 var tiles = []
 var chunks = []
 var playersInView = []
@@ -30,12 +30,54 @@ function setup() {
     frameRate(30);
     stroke(255);
     strokeWeight(10);
-    ctx = document.getElementsByClassName("p5Canvas")[0].getContext('2d');
+    //ctx = document.getElementsByClassName("p5Canvas")[0].getContext('2d');
 }
 function draw() {
     //background(255);
     image(mapGraphics, 0, 0)
+    if (keyIsDown(LEFT_ARROW)) {
+        px -= 1;
+        socket.emit("updatePos", px, py)
+    }
+
+    if (keyIsDown(RIGHT_ARROW)) {
+        px += 1;
+        socket.emit("updatePos", px, py)
+    }
+
+    if (keyIsDown(UP_ARROW)) {
+        py -= 1;
+        socket.emit("updatePos", px, py)
+    }
+
+    if (keyIsDown(DOWN_ARROW)) {
+        py += 1;
+        socket.emit("updatePos", px, py)
+    }
+
+    handleArrowKeys()
     renderPlayers();
+}
+function handleArrowKeys() {
+    if(keyIsDown(LEFT_ARROW) || keyIsDown(RIGHT_ARROW) || keyIsDown(UP_ARROW) || keyIsDown(DOWN_ARROW)) {
+        console.log(px, py)
+        if (mapLoaded) {
+            if (px <= leftbound) {
+                socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
+                mapLoaded = false
+            } else if (px >= rightbound) {
+                socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
+                mapLoaded = false
+            } else if (py <= upbound) {
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), upbound - 48, "up")
+                mapLoaded = false
+            } else if (py >= lowbound) {
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), lowbound + 48, "down")
+                mapLoaded = false
+            }
+
+        }
+    }
 }
 function renderMap() {
     for(var y = 0; y < tiles.length; y++) {
@@ -98,7 +140,7 @@ function renderPlayers() {
         rect((playersInView[i].x - leftbound) * 5, (playersInView[i].y - upbound) * 5, 5)
     }
 }
-document.onkeydown = checkKey;
+//document.onkeydown = checkKey;
 
 function checkKey(e) {
 
