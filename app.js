@@ -3,7 +3,7 @@ var fs = require('fs'); //filesystem module
 var io = require('socket.io')(app); //socket.io module
 var sentencer = require('sentencer') //suggest topics
 var ids = [] //list of socket ids
-var sockets = [] //list of connected sockets
+var players = [] //list of connected sockets
 var Perlin = require('perlin.js');
 
 Perlin.seed(69);
@@ -52,30 +52,87 @@ async function response(req, res) {
 app.listen(process.env.PORT || 3000);
 //on a connection, what do we do
 io.on('connection', function (socket) {
-    sockets.push(socket)
-    ids.push(socket.id)
     console.log(socket.id + " joined server")
-    socket.on("getFrame", function(px, py) {
+    socket.on("disconnect", function() {
+        for(var x = 0; x < players.length; x++) {
+            if(players[x].id === socket.id) {
+                players.splice(x, 1)
+                break
+            }
+        }
+        ids.splice(ids.indexOf(socket.id), 1)
+    })
+    socket.on("updatePos", function(px, py, lb, rb, ub, lob) {
+        console.log("got update position command")
+        if(!ids.includes(socket.id)) {
+            var obj = {
+                x: px,
+                y: py,
+                id: socket.id
+            }
+            players.push(obj)
+            ids.push(socket.id)
+        } else {
+            findObjectByKey(players, "id", socket.id).x = px
+            findObjectByKey(players, "id", socket.id).y = py
+        }
+
+        io.sockets.emit("requestNewPlayerPos")
+    })
+    socket.on("needNewPlayerPos", function(px, py, lb, rb, ub, lob){
+        var playersInView = []
+        for(var x = 0; x < players.length; x++) {
+            if(players[x].x < rb && players[x].x > lb && players[x].y < lob && players[x].y > ub) {
+                playersInView.push(players[x])
+            }
+        }
+        socket.emit("playerUpdate", playersInView)
+    })
+    socket.on("getFrame", function(px, py, direction) {
+        if(!ids.includes(socket.id)) {
+            var obj = {
+                x: px,
+                y: py,
+                id: socket.id
+            }
+            players.push(obj)
+            ids.push(socket.id)
+        } else {
+            findObjectByKey(players, "id", socket.id).x = px
+            findObjectByKey(players, "id", socket.id).y = py
+        }
         console.log(px, py)
-        var leftbound = px - 74
-        var rightbound = px + 74
-        var upbound = py - 58
-        var lowbound = py + 58
+        var leftbound = px - 65
+        var rightbound = px + 65
+        var upbound = py - 49
+        var lowbound = py + 49
         var currentMap = []
         for (var y = upbound; y < lowbound; y++) {
             var row = []
             for (var x = leftbound; x < rightbound; x++) {
-                var obj = {
-                    noise: getNoise(x, y),
-                    x: x,
-                    y: y
+                var obj = {}
+                if(findObjectByKey(players, "x", x) && findObjectByKey(players, "x", x).y === y) {
+                    obj = {
+                        noise: 999,
+                        x: x,
+                        y: y,
+                        id: findObjectByKey(players, "x", x).id
+                    }
+                } else {
+                    obj = {
+                        noise: getNoise(x, y),
+                        x: x,
+                        y: y,
+                        id: 0
+                    }
                 }
                 row.push(obj)
             }
             currentMap.push(row)
         }
         //console.log(currentMap)
-        socket.emit("loadMap", currentMap)
+        socket.emit("loadMap", currentMap, direction)
+        //io.sockets.emit("playerUpdate")
     })
     socket.on("getChunks", function(chunks) {
         var allNewChunks = []
@@ -119,3 +176,6 @@ function getNoise(x, y) {
     //return Math.abs(simplex.noise2D(x, y)) * 100
     //return Math.floor(grid.getPixel(x / scalefactor, y / scalefactor) * 100)
 }
+const pointInRect = ({x1, y1, x2, y2}, {x, y}) => (
+    (x > x1 && x < x2) && (y > y1 && y < y2)
+)

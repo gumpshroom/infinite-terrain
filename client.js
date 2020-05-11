@@ -1,14 +1,16 @@
 var socket = io();
 var tiles = []
 var chunks = []
-var px = getRandomInt(100, 1000)
-var py = getRandomInt(100, 1000)
+var playersInView = []
+var mapLoaded = false
+var px = getRandomInt(100, 150)
+var py = getRandomInt(100, 150)
 var mapmaxX = 74,
     mapmaxY = 58
-var leftbound = px - 64,
-    rightbound = px + 64,
-    upbound = py - 48,
-    lowbound = py + 48
+var leftbound = px - 65,
+    rightbound = px + 65,
+    upbound = py - 49,
+    lowbound = py + 49
 // the snake is divided into small segments, which are drawn and edited on each 'draw' call
 let direction = 'right';
 const dirt = '#6b4433',
@@ -30,12 +32,18 @@ function draw() {
     background(255);
     render();
 }
+
 function render() {
-    for(var y = 0; y < tiles.length - 20; y++) {
+    for(var y = 0; y < tiles.length; y++) {
         var absolutey = py - y - 48
-        for(var x = 0; x < tiles[y].length - 20; x++) {
+        for(var x = 0; x < tiles[y].length; x++) {
             var absolutex = px - x - 64
-            if(tiles[y][x].noise > 90) {
+            //if(px === tiles[y][x].x && py === tiles[y][x].y && socket.id === tiles[y][x].id) {
+            /*if(tiles[y][x].id === socket.id) {
+                stroke(255)
+            } else if(tiles[y][x].noise === 999 && tiles[y][x].id !== socket.id) {
+                stroke('red')
+            } else*/ if(tiles[y][x].noise > 90 && tiles[y][x].noise <= 100) {
                 stroke(dirt)
             } else if(tiles[y][x].noise > 80 && tiles[y][x].noise <= 90) {
                 stroke(dirt)
@@ -53,7 +61,7 @@ function render() {
                 stroke(water)
             } else if(tiles[y][x].noise > 10 && tiles[y][x].noise <= 20) {
                 stroke(water)
-            } else {
+            } else if(tiles[y][x].noise <= 10) {
                 stroke(water)
             }
             //stroke(tiles[y][x].noise.r, tiles[y][x].noise.g, tiles[y][x].noise.b)
@@ -62,7 +70,18 @@ function render() {
             rect(x * 5, y * 5, 5, 5)
         }
     }
+
+    for(var i = 0; i < playersInView.length; i++) {
+        if(playersInView[i].id === socket.id) {
+            stroke(255)
+        } else {
+            stroke('red')
+        }
+
+        rect((playersInView[i].x - leftbound) * 5, (playersInView[i].y - upbound) * 5, 5, 5)
+    }
 }
+
 document.onkeydown = checkKey;
 
 function checkKey(e) {
@@ -71,33 +90,59 @@ function checkKey(e) {
 
     if (e.keyCode == '38') {
         py--
+        socket.emit("updatePos", px, py)
         // up arrow
     }
     else if (e.keyCode == '40') {
         py++
+        socket.emit("updatePos", px, py)
         // down arrow
     }
     else if (e.keyCode == '37') {
         px--
+        socket.emit("updatePos", px, py)
         // left arrow
     }
     else if (e.keyCode == '39') {
         px++
+        socket.emit("updatePos", px, py)
         // right arrow
     }
-    leftbound = px - 64
+    if(e.keyCode == '38' || e.keyCode == '40' || e.keyCode == '37' || e.keyCode == '39') {
+
+        console.log(px, py)
+        if(mapLoaded) {
+            if (px <= leftbound) {
+                socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
+                mapLoaded = false
+            } else if (px >= rightbound) {
+                socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
+                mapLoaded = false
+            } else if (py <= upbound) {
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), upbound - 48, "up")
+                mapLoaded = false
+            } else if (py >= lowbound) {
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), lowbound + 48, "down")
+                mapLoaded = false
+            }
+
+        }
+    }
+    /*leftbound = px - 64
     rightbound = px + 64
     upbound = py - 48
-    lowbound = py + 48
+    lowbound = py + 48*/
     /*var chunksToRequest = checkChunks()
     console.log(px, py)
     console.log(chunksToRequest)
     if(chunksToRequest.length !== 0) {
         socket.emit("getChunks", chunksToRequest)
     }*/
-    socket.emit("getFrame", px, py)
+
+
+
 }
-socket.on("loadMap", function(newMap){
+socket.on("loadMap", function(newMap, direction){
     /*var tempMap = []
     for(var i = 10; i < newMap.length - 10; i++) {
         var row = []
@@ -106,9 +151,44 @@ socket.on("loadMap", function(newMap){
         }
         tempMap.push(row)
     }*/
+    switch(direction) {
+        case "up":
+            lowbound = upbound
+            py = lowbound - 1
+            upbound = upbound - 97
+            break
+        case "down":
+            //py += 1
+            upbound = lowbound
+            lowbound = lowbound + 97
+            break
+        case "left":
+            rightbound = leftbound
+            px = rightbound - 1
+            leftbound = leftbound - 129
+            break
+        case "right":
+            //px += 1
+            leftbound = rightbound
+            rightbound = rightbound + 129
+            break
+        default:
+            break
+    }
+
+    print("bounds updated: l:", leftbound, ", r:", rightbound, ", u:", upbound, ", d:", lowbound)
+    mapLoaded = true
     console.log("received map")
     tiles = newMap
     //console.log(tiles)
+})
+socket.on("requestNewPlayerPos", function(){
+    socket.emit("needNewPlayerPos", px, py, leftbound, rightbound, upbound, lowbound)
+})
+socket.on("playerUpdate", function(players) {
+    console.log("updated player positions")
+    playersInView = players
+    //socket.emit("getFrame", Math.floor((upbound + lowbound) / 2), Math.floor((rightbound + leftbound) / 2))
 })
 socket.on("loadChunks", function(chunks) {
     /*for (var i = 0; i < chunks.length; i++) {

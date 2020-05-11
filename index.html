@@ -36,7 +36,7 @@
 
 </head>
 
-<body onload="socket.emit('getFrame', px, py)">
+<body onload="socket.emit('updatePos', px, py, leftbound, rightbound, upbound, lowbound); socket.emit('getFrame', px, py)">
 
 </body>
 
