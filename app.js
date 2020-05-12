@@ -365,7 +365,7 @@ io.on("connection", function (socket) {
             findObjectByKey(players, "id", socket.id).y = py
             writeFB()
             io.sockets.emit("requestNewPlayerPos")
-        } else if(getPlayerById(socket.id).digging) {
+        } else if(getPlayerById(socket.id) && getPlayerById(socket.id).digging) {
             socket.emit("diggingLock", getPlayerById(socket.id).x, getPlayerById(socket.id).y)
         }
     })
