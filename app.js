@@ -350,7 +350,7 @@ io.on("connection", function (socket) {
                     player.digging = false
                     writeFB()
                 } else {
-                    revealedTreasures.push({x: px, y: py})
+                    //revealedTreasures.push({x: px, y: py})
                     player.digging = false
                     socket.emit("noTreasure")
                 }
