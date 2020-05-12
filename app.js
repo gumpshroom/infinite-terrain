@@ -154,7 +154,12 @@ function authenticate(socket, data, callback) {
     console.log(data)
     try {
         var user = findObjectByKey(players, "username", data.username) || findObjectByKey(players, "token", data.token)
-        callback(null, user && (user.password === data.password || findObjectByKey(players, "token", data.token)));
+        if(user) {
+            callback(null, user && (user.password === data.password || findObjectByKey(players, "token", data.token)));
+        } else {
+            callback(null, false);
+        }
+
     } catch (error) {
         callback(error);
     }
