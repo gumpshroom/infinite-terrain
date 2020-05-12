@@ -182,6 +182,11 @@ function renderPlayers() {
 
         }
         rect((playersInView[i].x - leftbound) * 5, (playersInView[i].y - upbound) * 5, 5)
+        noStroke()
+        textSize(8)
+        textAlign(CENTER)
+        fill(255)
+        text(playersInView[i].username, (playersInView[i].x - leftbound) * 5 + 2.5, (playersInView[i].y - upbound) * 5 - 10)
     }
 }
 function renderTreasure() {
