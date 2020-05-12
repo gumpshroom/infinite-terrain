@@ -291,7 +291,9 @@ io.on("connection", function (socket) {
             player.digging = true
             if(inRangeExc(noise, 0, 30) || (!findObjectByKey(revealedTreasures, "x", px) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y !== py))) {
                 socket.emit("chatUpdate", "Can't dig there.")
+                player.digging = false
             } else {
+                socket.emit("chatUpdate", "Digging...")
                 setTimeout(function () {
                     if ((inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && player.digging) {
                         revealedTreasures.push({x: px, y: py})

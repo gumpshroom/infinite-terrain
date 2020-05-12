@@ -44,7 +44,6 @@ function setup() {
         shouldHandleKeyDown = false;
         // HANDLE KEY DOWN HERE
         if(e.key === 'n' && focus === "canvas") {
-            addToChat("Digging...")
             socket.emit("dig", px, py)
         }
     }
@@ -390,7 +389,7 @@ socket.on("authenticated", function() {
         }
         if(!treasure || treasure === "none") {
             var p = document.createElement("p")
-            p.innerText = "You have no treasure. Dig to find some."
+            p.innerText = "You have no treasure. Press N to dig for treasure."
             treasureContainer.appendChild(p)
         } else {
             for(var x = 0; x < treasure.length; x++) {
