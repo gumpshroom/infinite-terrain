@@ -66,11 +66,13 @@ function setup() {
     div.appendChild(chatbox)
     var form = document.createElement("form")
     form.id = "chat"
+    form.autocomplete = "off"
     form.style.display = 'inline'
     var textInput = document.createElement("input")
     textInput.type = "text"
     textInput.id = "msg_text"
     textInput.name = "msg_text"
+    textInput.autocomplete = "off"
     var textInputw = parseInt(chatboxw * 0.7)
     var sendBtnw = parseInt(chatboxw * 0.2)
     console.log(textInputw)
