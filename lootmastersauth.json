@@ -1,0 +1,12 @@
+{
+  "type": "service_account",
+  "project_id": "lootmasters-69",
+  "private_key_id": "1090e76c21468638e5e6103921222ad6e6c9e640",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCcg5iRR07+l7UT\nVfmX1h4oInmGezGwutC/gaXkel1HbqmD1B7QOaHVdFCCb8Kfgjuq30b4w8zctE5O\nr+0KcvC50zcVi7UaXzGNk30X3T9C1j07/Er1thGuIHUDFrrcXcKHNLJhsJZkfXZL\nhvjqa3vhGcZhmyLp6rroPVCWRToah5x+xNqBeNRjiHO24nzZEX8WnVwhsKAiXscT\nCWl6bbY7yIoilekUPOD4pkJSfEOeDB+iTm/j84m/bQq3MWFNJ2RiOymG6DK0wRLD\n246McuW71xcQP4yBFLOJ6Sk/ZvFuh90F1RsUneGoF3nlGlEwEpBSz1Ul8lzEyzP8\nvKIIiQ+7AgMBAAECggEASdMWpTwF6jejvRWaD8D644JzYPf99bcAnLwqBC2ljvqH\nMbvdtujgSV8+VHAj1Hoo6826W797g4T2xM3dmMajfns+qcaGq4RIStfNMvL0knGc\nW42CzAhPqZr8pnLTu/rrtTupgkO5hHfbUv+8rFH7ki9GsCZtXvmNpNq7Bs5rfDRK\n0ninxFnr51ZZnLvNoWfvspg/Q+WbGK47aPPBJMQ/a0XRUURuVp7WsBE0gqCfHAdI\nd5Cn3a9VsyerVoaUN4hCt8A2IeD6TOT8rMKSwS1XuR0Z4Dpmm2Wk9R9g2+48uM0S\nImS+YoUZ+ljL0JpZ9RwQER1W3zwPbDXEv/ZC2ML27QKBgQDWy4JrFeVRUTrFk8D2\n5obFU+dye7exr5Pqa/8ReS84kbHXnul5i5N2XZRcYo12rjftkBipv+QA4jGokzib\nJ5dIu+bfMuZGOV8UUax2C+hGSKQfapoOaURj2YQCAZk6xWpWHt4SpUK6Dn9LxKvW\nUMhuwMbaxwQmqR7wabFrEwmDbwKBgQC6ie9w2UVGbsJskXgrPkROxK2Kk4KOfS7T\nkPTiwY1tksp/wbdP/lkNAFxwVGswn5hVT1am4TcjLjzqXUvtCiKODsZ+C4Tn2XyO\nWs2sOGBQVWh3LsF9RDzHVTryc/WREiJNP0M/th7/knMOqpTG6JkF1qyy9iAUtPG3\nckYoz1jidQKBgBv9UPVbWRKLnzj31AFYcN9t248TiBBjbMbzY72HKRwaAC60yn/I\nLGMUNq0DOqPod+lBCbW1B6UF1Kq+5HVzZ0dXFPKo01D7UOR48BxB2PavqJNfdMvD\n8+F/CrCoPKtn5j9qrk2Hs3ZDRVs+OZYn2LZ18HO501SmXR2+6Bun02mJAoGBALX/\nAAsFII6wX6bXYvwl2zVStNKgSt/EiRxHsHVQTDEc588v7C7yxGVn9chuxMoC2/hX\n2P4me8oqQaqTbhGOMtqQ1d6CVKB0VA77zvD5bBbUzYCCsKsMGZSNtl54/p0UqTze\nvTj68lF9zB4CFfffVfUZVxOgCPrK8458wrDsZBdFAoGAZSrZ33DvTI0xOnyMZ0jM\nZv6Yo6VNB18MqkpED6GYsKpsJGiPjkjIZqpXhr6eZGPh9jvgb2m2K1kHwgueoYos\nFVUa51t6eiN6SGum2YwGzaAiNsiHCyt3V4Ayrml0YU44YH0KQml5/Mn4bIhUbsCg\nA11YAcQz31lZu/x+f2zBRHo=\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-tjgi8@lootmasters-69.iam.gserviceaccount.com",
+  "client_id": "115575501998682090221",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-tjgi8%40lootmasters-69.iam.gserviceaccount.com"
+}
