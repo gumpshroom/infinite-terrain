@@ -167,11 +167,13 @@ function authenticate(socket, data, callback) {
 
 function postAuthenticate(socket, data) {
     var username = data.username
-    console.log(socket.id + "(" + username + ") joined server")
-    socket.on("storeTransferToken", function (token) {
-        findObjectByKey(players, "username", username).token = token
-        writeFB()
-    })
+    console.log(socket.id + "(" + username + ") tried to join server")
+    if(findObjectByKey(players, "username", username)) {
+        socket.on("storeTransferToken", function (token) {
+            findObjectByKey(players, "username", username).token = token
+            writeFB()
+        })
+    }
 }
 
 function simplifyPlayer(playerobj) {
@@ -287,80 +289,83 @@ io.on("connection", function (socket) {
             var noise = getNoise(px, py)
             console.log(noise)
             player.digging = true
-            setTimeout(function () {
-                if ((inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && (!findObjectByKey(revealedTreasures, "x", px) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y !== py)) && player.digging) {
-                    revealedTreasures.push({x: px, y: py})
-                    var select = Math.random() * 100
-                    var treasure = {}
-                    if (select > 99.9) {
-                        treasure.rarity = "legendary"
-                        treasure.value = getRandomInt(1000000, 6000000)
-                        var type = getRandomInt(1, 4)
-                        switch (type) {
-                            case 1:
-                                type = "Idol"
-                                break
-                            case 2:
-                                type = "Sword"
-                                break
-                            case 3:
-                                type = "Totem"
-                                break
-                            default:
-                                break
+            if(inRangeExc(noise, 0, 30) || (!findObjectByKey(revealedTreasures, "x", px) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y !== py))) {
+                socket.emit("chatUpdate", "Can't dig there.")
+            } else {
+                setTimeout(function () {
+                    if ((inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && player.digging) {
+                        revealedTreasures.push({x: px, y: py})
+                        var select = Math.random() * 100
+                        var treasure = {}
+                        if (select > 99.9) {
+                            treasure.rarity = "legendary"
+                            treasure.value = getRandomInt(1000000, 6000000)
+                            var type = getRandomInt(1, 4)
+                            switch (type) {
+                                case 1:
+                                    type = "Idol"
+                                    break
+                                case 2:
+                                    type = "Sword"
+                                    break
+                                case 3:
+                                    type = "Totem"
+                                    break
+                                default:
+                                    break
+                            }
+                            treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
+                        } else if (select > 98) {
+                            treasure.rarity = "extremely rare"
+                            treasure.value = getRandomInt(600000, 1000000)
+                            treasure.name = capWord(sentencer.make("{{adjective}}")) + capWord(sentencer.make("{{noun}}"))
+                        } else if (select > 80) {
+                            treasure.rarity = "rare"
+                            treasure.value = getRandomInt(100000, 300000)
+                            treasure.name = sentencer.make("{{adjective}} {{noun}}")
+                        } else {
+                            treasure.rarity = "common"
+                            treasure.value = getRandomInt(1000, 30000)
+                            var type = getRandomInt(1, 4)
+                            switch (type) {
+                                case 1:
+                                    type = "rusty"
+                                    break
+                                case 2:
+                                    type = "beat-up"
+                                    break
+                                case 3:
+                                    type = "neglected"
+                                    break
+                                default:
+                                    break
+                            }
+                            treasure.name = sentencer.make(type + " {{noun}}")
                         }
-                        treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
-                    } else if (select > 98) {
-                        treasure.rarity = "extremely rare"
-                        treasure.value = getRandomInt(600000, 1000000)
-                        treasure.name = capWord(sentencer.make("{{adjective}}")) + capWord(sentencer.make("{{noun}}"))
-                    } else if (select > 80) {
-                        treasure.rarity = "rare"
-                        treasure.value = getRandomInt(100000, 300000)
-                        treasure.name = sentencer.make("{{adjective}} {{noun}}")
+                        if (getPlayerById(socket.id).treasure === "none" || !getPlayerById(socket.id).treasure) {
+                            getPlayerById(socket.id).treasure = []
+                        }
+                        getPlayerById(socket.id).treasure.push(treasure)
+                        socket.emit("gotTreasure", treasure.name)
+                        socket.emit("foundTreasureChat", treasure.name)
+                        if (treasure.rarity === "legendary") {
+                            socket.emit("chatUpdate", "<b>" + player.username + " found a legendary " + treasure.name + "!</b>")
+                        }
+                        io.sockets.emit("requestNewTreasurePos")
+                        player.digging = false
+                        writeFB()
                     } else {
-                        treasure.rarity = "common"
-                        treasure.value = getRandomInt(1000, 30000)
-                        var type = getRandomInt(1, 4)
-                        switch (type) {
-                            case 1:
-                                type = "rusty"
-                                break
-                            case 2:
-                                type = "beat-up"
-                                break
-                            case 3:
-                                type = "neglected"
-                                break
-                            default:
-                                break
-                        }
-                        treasure.name = sentencer.make(type + " {{noun}}")
+                        //revealedTreasures.push({x: px, y: py})
+                        player.digging = false
+                        socket.emit("noTreasure")
                     }
-                    if (getPlayerById(socket.id).treasure === "none" || !getPlayerById(socket.id).treasure) {
-                        getPlayerById(socket.id).treasure = []
-                    }
-                    getPlayerById(socket.id).treasure.push(treasure)
-                    socket.emit("gotTreasure", treasure.name)
-                    socket.emit("foundTreasureChat", treasure.name)
-                    if(treasure.rarity === "legendary") {
-                        socket.emit("chatUpdate", "<b>" + player.username + " found a legendary " + treasure.name + "!</b>")
-                    }
-                    io.sockets.emit("requestNewTreasurePos")
-                    player.digging = false
-                    writeFB()
-                } else {
-                    //revealedTreasures.push({x: px, y: py})
-                    player.digging = false
-                    socket.emit("noTreasure")
-                }
-            }, player.digTime)
-
+                }, player.digTime)
+            }
         }
     })
     socket.on("updatePos", function (px, py) {
         //console.log(findObjectByKey(players, "id", socket.id))
-        if (getPlayerById(socket.id) && !getPlayerById(socket.id).digging) {
+        if (getPlayerById(socket.id) && !getPlayerById(socket.id).digging && !inRangeExc(getNoise(px, py), 0, 30)) {
             //console.log("updated " + socket.id)
             findObjectByKey(players, "id", socket.id).x = px
             findObjectByKey(players, "id", socket.id).y = py

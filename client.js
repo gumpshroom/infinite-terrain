@@ -284,6 +284,7 @@ socket.on("authenticated", function() {
     socket.on("foundTreasureChat", function(treasurename) {
         addToChat("Found a " + treasurename + "!")
     })
+
     socket.on("diggingLock", function(x, y) {
         px = x
         py = y
