@@ -367,7 +367,7 @@ io.on("connection", function (socket) {
     })
     socket.on("updatePos", function (px, py) {
         //console.log(findObjectByKey(players, "id", socket.id))
-        if (getPlayerById(socket.id) && !getPlayerById(socket.id).digging && !inRangeExc(getNoise(px, py), 0, 30)) {
+        if (getPlayerById(socket.id) && !getPlayerById(socket.id).digging) {
             //console.log("updated " + socket.id)
             findObjectByKey(players, "id", socket.id).x = px
             findObjectByKey(players, "id", socket.id).y = py
