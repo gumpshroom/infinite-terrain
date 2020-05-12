@@ -88,6 +88,7 @@ function renderMap() {
 }
 function renderPlayers() {
     for(var i = 0; i < playersInView.length; i++) {
+
         if(playersInView[i].id === socket.id) {
             stroke(255)
             //rect(psx, psy, 5)
@@ -154,52 +155,79 @@ function checkKey(e) {
 
 
 }
-socket.on("loadMap", function(newMap, direction){
-    /*var tempMap = []
-    for(var i = 10; i < newMap.length - 10; i++) {
-        var row = []
-        for(var j = 10; j < newMap[i].length - 10; j++) {
-            row.push(newMap[i][j])
-        }
-        tempMap.push(row)
-    }*/
-    switch(direction) {
-        case "up":
-            lowbound = upbound
-            py = lowbound - 1
-            upbound = upbound - 97
-            break
-        case "down":
-            //py += 1
-            upbound = lowbound
-            lowbound = lowbound + 97
-            break
-        case "left":
-            rightbound = leftbound
-            px = rightbound - 1
-            leftbound = leftbound - 129
-            break
-        case "right":
-            //px += 1
-            leftbound = rightbound
-            rightbound = rightbound + 129
-            break
-        default:
-            break
-    }
 
-    print("bounds updated: l:", leftbound, ", r:", rightbound, ", u:", upbound, ", d:", lowbound)
-    mapLoaded = true
-    //console.log("received map")
-    tiles = newMap
-    renderMap()
-    //console.log(tiles)
-})
-socket.on("requestNewPlayerPos", function(){
-    socket.emit("needNewPlayerPos", px, py, leftbound, rightbound, upbound, lowbound)
-})
-socket.on("playerUpdate", function(players) {
-    //console.log("updated player positions")
-    playersInView = players
-    //socket.emit("getFrame", Math.floor((upbound + lowbound) / 2), Math.floor((rightbound + leftbound) / 2))
+
+//socket.id = localStorage.getItem("transferToken")
+socket.emit("authentication", {token:localStorage.getItem("transferToken")})
+socket.on("authenticated", function() {
+    socket.emit("tokenToId", localStorage.getItem("transferToken"))
+
+    socket.on("authFail", function() {
+        Swal.fire("Authentication fail.").then(function() {
+            location.href = "/"
+        })
+    })
+    socket.on("authSuccess", function(x, y) {
+        console.log("auth success")
+        px = x
+        py = y
+        leftbound = px - 65
+        rightbound = px + 65
+        upbound = py - 49
+        lowbound = py + 49
+        socket.emit('updatePos', x, y)
+        socket.emit('getFrame', x, y)
+    })
+
+    socket.on("loadMap", function(newMap, direction){
+        /*var tempMap = []
+        for(var i = 10; i < newMap.length - 10; i++) {
+            var row = []
+            for(var j = 10; j < newMap[i].length - 10; j++) {
+                row.push(newMap[i][j])
+            }
+            tempMap.push(row)
+        }*/
+        switch(direction) {
+            case "up":
+                lowbound = upbound
+                py = lowbound - 1
+                upbound = upbound - 97
+                break
+            case "down":
+                //py += 1
+                upbound = lowbound
+                lowbound = lowbound + 97
+                break
+            case "left":
+                rightbound = leftbound
+                px = rightbound - 1
+                leftbound = leftbound - 129
+                break
+            case "right":
+                //px += 1
+                leftbound = rightbound
+                rightbound = rightbound + 129
+                break
+            default:
+                break
+        }
+
+        console.log("bounds updated: l:", leftbound, ", r:", rightbound, ", u:", upbound, ", d:", lowbound)
+        mapLoaded = true
+        //console.log("received map")
+        tiles = newMap
+        renderMap()
+        //console.log(tiles)
+    })
+    socket.on("requestNewPlayerPos", function(){
+        console.log('requested players')
+        socket.emit("needNewPlayerPos", px, py, leftbound, rightbound, upbound, lowbound)
+    })
+    socket.on("playerUpdate", function(players) {
+        //console.log("updated player positions")
+        playersInView = players
+        //socket.emit("getFrame", Math.floor((upbound + lowbound) / 2), Math.floor((rightbound + leftbound) / 2))
+    })
+
 })

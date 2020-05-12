@@ -1,43 +1,40 @@
-<!DOCTYPE html>
-<html lang="">
-
+<html>
 <head>
-    <script src="https://code.jquery.com/jquery-1.12.1.min.js"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
-    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.deep_orange-blue.min.css">
-    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <link rel="stylesheet" href="login.css"></link>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@9"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Infinite terrain demo</title>
-    <style>
-        html, body {
-            height: 100%;
-        }
-
-        body {
-            background-color: black;
-            margin: 0;
-            display: flex;
-
-            /* This centers our sketch horizontally. */
-            justify-content: center;
-
-            /* This centers our sketch vertically. */
-            align-items: center;
-        }
-
-    </style>
-    <script src="../p5.js"></script>
-    <!--script src="../addons/p5.sound.min.js"></script-->
-    <!--we might need sound, but who knows.-->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="client.js"></script>
 
 </head>
+<body>
 
-<body onload="socket.emit('updatePos', px, py, leftbound, rightbound, upbound, lowbound); socket.emit('getFrame', px, py)">
 
+<section class="form animated flipInX">
+    <h1>Welcome to Treasure Hunter!</h1>
+    <p>It's a cool game. In testing.</p>
+    <hr width=80% align=center>
+    <h2>Login To Your Account</h2>
+    <p class="valid">Valid. Please wait a moment.</p>
+    <p class="error">Error. Please enter correct username and password.</p>
+    <form class="loginbox" autocomplete="off">
+        <input placeholder="Username" type="text" id="loginusername"></input>
+        <input placeholder="Password" type="password" id="loginpassword"></input>
+        <button id="submitLogin" onclick="tryAuth()">Login</button>
+    </form>
+    <hr width=80% align=center>
+    <h2>Or, Sign Up Now</h2>
+    <p class="valid">Valid. Please wait a moment.</p>
+    <p class="error">Error. Please enter correct username and password.</p>
+    <form class="loginbox" autocomplete="off">
+        <input placeholder="Username" type="text" id="signupusername"></input>
+        <input placeholder="Password" type="password" id="signuppassword"></input>
+        <button id="submitSignup" >Sign Up</button>
+    </form>
+</section>
+<script src="/socket.io/socket.io.js"></script>
+<script src="login.js"></script>
+<script src="js/md5.min.js"></script>
 </body>
-
 </html>
