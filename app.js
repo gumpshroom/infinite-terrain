@@ -85,6 +85,8 @@ async function response(req, res) {
         file = __dirname + "/no.txt"
     } else if (req.url === "/game") {
         file = __dirname + "/game.html"
+    } else if (req.url === "/lootmastersauth.json") {
+        file = __dirname + "/no.txt"
     } else if (req.url.includes("/loginsubmit?")) {
         file = __dirname + "/loginsubmit.html"
     } else if (req.url.slice(0, 14) === "/signupsubmit?") {
