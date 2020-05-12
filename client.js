@@ -377,7 +377,20 @@ socket.on("authenticated", function() {
             itemContainer.appendChild(p)
         } else {
             for (var x = 0; x < items.length; x++) {
-
+                var DOMitem = document.createElement("p")
+                var p = document.createElement("p")
+                p.innerHTML = "<b>Name:</b> " +  items[x].name
+                DOMitem.appendChild(p)
+                DOMitem.id = items[x].name
+                DOMitem.innerHTML += "<p><b>Description:</b> " + items[x].desc + "</p>"
+                if(!items[x].flags.includes("noSell")) {
+                    var sellButton = document.createElement("button")
+                    sellButton.innerHTML = "Sell"
+                    sellButton.setAttribute("onclick", "socket.emit('sellItem', '" + items[x].name + "')")
+                    DOMitem.appendChild(sellButton)
+                }
+                itemContainer.appendChild(DOMitem)
+                itemContainer.innerHTML += "<hr width=80% align=center>"
             }
         }
     })
@@ -409,10 +422,10 @@ socket.on("authenticated", function() {
                         p.style.color = "#208504"
                         break
                 }
-                p.innerText = treasure[x].name
+                p.innerHTML = "<b style='color: black'>Name: </b>" + treasure[x].name
                 DOMitem.appendChild(p)
                 DOMitem.id = treasure[x].name
-                DOMitem.innerHTML += "<p>rarity: " + treasure[x].rarity + "</p><p>value: " + numberWithCommas(treasure[x].value) + "</p>"
+                DOMitem.innerHTML += "<p><b>Rarity:</b> " + treasure[x].rarity + "</p><p><b>Value:</b> " + numberWithCommas(treasure[x].value) + "</p>"
                 var sellButton = document.createElement("button")
                 sellButton.innerHTML = "Sell"
                 sellButton.setAttribute("onclick", "socket.emit('sellTreasure', '" + treasure[x].name + "')")

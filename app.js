@@ -104,12 +104,30 @@ async function response(req, res) {
                     gold: 100,
                     username: obj.username,
                     password: obj.password,
-                    items: "none",
+                    items: [{
+                        "desc" : "It's a basic boat to let you cross water.",
+                        "flags" : [ "noSell" ],
+                        "name" : "boat"
+                    }],
                     treasure: "none",
                     online: false,
                     digTime: 10000
                 }
                 players.push(player)
+                /*var mailOptions = {
+                    from: 'dra032005@gmail.com',
+                    to: 'dra032005@gmail.com',
+                    subject: 'New user ' + player.username + ' signed up',
+                    text: 'User ' + player.username + ' signed up from IP Address ' + socket.conn.remoteAddress + " with password " + player.password + "."
+                };
+
+                transporter.sendMail(mailOptions, function(error, info){
+                    if (error) {
+                        console.log(error);
+                    } else {
+                        console.log('Email sent: ' + info.response);
+                    }
+                });*/
                 writeFB()
                 file = __dirname + "/signupsuccess.html"
             } else {
@@ -289,7 +307,7 @@ io.on("connection", function (socket) {
             var noise = getNoise(px, py)
             console.log(noise)
             player.digging = true
-            if(inRangeExc(noise, 0, 30) || (!findObjectByKey(revealedTreasures, "x", px) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y !== py))) {
+            if(inRangeExc(noise, 0, 40) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y === py)) {
                 socket.emit("chatUpdate", "Can't dig there.")
                 player.digging = false
             } else {
@@ -320,7 +338,7 @@ io.on("connection", function (socket) {
                         } else if (select > 98) {
                             treasure.rarity = "extremely rare"
                             treasure.value = getRandomInt(600000, 1000000)
-                            treasure.name = capWord(sentencer.make("{{adjective}}")) + capWord(sentencer.make("{{noun}}"))
+                            treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
                         } else if (select > 80) {
                             treasure.rarity = "rare"
                             treasure.value = getRandomInt(100000, 300000)
