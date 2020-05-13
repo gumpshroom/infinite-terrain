@@ -352,7 +352,7 @@ io.on("connection", function (socket) {
                         var treasure = {}
                         if (select > 99.99) {
                             treasure.rarity = "legendary"
-                            treasure.value = getRandomInt(1000000, 6000000)
+                            treasure.value = getRandomInt(10000000, 30000000)
                             var type = getRandomInt(1, 4)
                             switch (type) {
                                 case 1:
@@ -370,11 +370,11 @@ io.on("connection", function (socket) {
                             treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
                         } else if (select > 99.9) {
                             treasure.rarity = "extremely rare"
-                            treasure.value = getRandomInt(600000, 1000000)
+                            treasure.value = getRandomInt(5000000, 10000000)
                             treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
                         } else if (select > 90) {
                             treasure.rarity = "rare"
-                            treasure.value = getRandomInt(100000, 300000)
+                            treasure.value = getRandomInt(1000000, 3000000)
                             treasure.name = sentencer.make("{{adjective}} {{noun}}")
                         } else {
                             treasure.rarity = "common"
