@@ -350,7 +350,7 @@ io.on("connection", function (socket) {
                         revealedTreasures.push({x: px, y: py})
                         var select = Math.random() * 100
                         var treasure = {}
-                        if (select > 99.9) {
+                        if (select > 99.99) {
                             treasure.rarity = "legendary"
                             treasure.value = getRandomInt(1000000, 6000000)
                             var type = getRandomInt(1, 4)
@@ -368,11 +368,11 @@ io.on("connection", function (socket) {
                                     break
                             }
                             treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
-                        } else if (select > 98) {
+                        } else if (select > 99.9) {
                             treasure.rarity = "extremely rare"
                             treasure.value = getRandomInt(600000, 1000000)
                             treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
-                        } else if (select > 80) {
+                        } else if (select > 90) {
                             treasure.rarity = "rare"
                             treasure.value = getRandomInt(100000, 300000)
                             treasure.name = sentencer.make("{{adjective}} {{noun}}")
