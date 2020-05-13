@@ -313,7 +313,7 @@ io.on("connection", function (socket) {
             } else {
                 socket.emit("chatUpdate", "Digging...")
                 setTimeout(function () {
-                    if ((inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && player.digging) {
+                    if (/*(inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && */((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(6) === "3" && ((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(4) === "3" && ((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(7) === "2" && player.digging) {
                         revealedTreasures.push({x: px, y: py})
                         var select = Math.random() * 100
                         var treasure = {}
