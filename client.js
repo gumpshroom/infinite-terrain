@@ -249,7 +249,36 @@ function checkKey(e) {
 
 
 }
+function useItem(itemname, params) {
+    if(params && params.length !== 0) {
+        var html = "<form>"
+        for(var x = 0; x < params.length; x++) {
+            html += '<label for="' + params[x] + '">Value for ' + params[x] + ':</label><br><input type="text" id="' + params[x] + '" name="' + params[x] + '"><br>'
+        }
+        html += "</form>"
+        Swal.fire({
+            title: 'Using ' + itemname,
+            html: html,
+            showCancelButton: false,
+            showConfirmButton: true
+        }).then(function(result){
+            if(result) {
+                var querystring = ""
+                for (var i = 0; i < params.length; i++) {
+                    if (i !== params.length - 1) {
+                        querystring += params[i] + "=" + $("#" + params[i]).val() + "&"
+                    } else {
+                        querystring += params[i] + "=" + $("#" + params[i]).val()
+                    }
+                }
+                socket.emit("useItem", itemname, querystring)
+            }
+        })
+    } else {
+        socket.emit("useItem", itemname)
+    }
 
+}
 
 //socket.id = localStorage.getItem("transferToken")
 socket.emit("authentication", {token:localStorage.getItem("transferToken")})
@@ -283,7 +312,17 @@ socket.on("authenticated", function() {
     socket.on("foundTreasureChat", function(treasurename) {
         addToChat("Found a " + treasurename + "!")
     })
-
+    socket.on("requestGetFrame", function(x, y) {
+        px = x
+        py = y
+        leftbound = px - 65
+        rightbound = px + 65
+        upbound = py - 49
+        lowbound = py + 49
+        socket.emit('updatePos', x, y)
+        socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
+        socket.emit('getFrame', x, y)
+    })
     socket.on("diggingLock", function(x, y) {
         px = x
         py = y
@@ -346,6 +385,9 @@ socket.on("authenticated", function() {
         socket.emit("requesttreasure")
         socket.emit("requestitems")
     })
+    socket.on("itemsUpdated", function() {
+        socket.emit("requestitems")
+    })
     socket.on("requestNewTreasurePos", function () {
         console.log('requested treasures')
         socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
@@ -383,10 +425,11 @@ socket.on("authenticated", function() {
                 DOMitem.appendChild(p)
                 DOMitem.id = items[x].name
                 DOMitem.innerHTML += "<p><b>Description:</b> " + items[x].desc + "</p>"
-                if(!items[x].flags.includes("noSell")) {
+                if(!items[x].flags || !items[x].flags.includes("noUse")) {
                     var sellButton = document.createElement("button")
-                    sellButton.innerHTML = "Sell"
-                    sellButton.setAttribute("onclick", "socket.emit('sellItem', '" + items[x].name + "')")
+                    sellButton.innerHTML = "Use"
+                    //params is an array
+                    sellButton.setAttribute("onclick", "useItem('" + items[x].name + "', ['" + items[x].params.join("', '") + "'])")
                     DOMitem.appendChild(sellButton)
                 }
                 itemContainer.appendChild(DOMitem)

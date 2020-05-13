@@ -44,7 +44,7 @@ Perlin.seed(69);
 function readFB() {
     return new Promise(resolve => {
         FirebaseData.once("value", function (snapshot) {
-            console.log(snapshot.val());
+            //console.log(snapshot.val());
             appdata = copyObject(snapshot.val());
             //playerShrooms = findObjectByKey(players, "username", store.get("username")).shrooms
             resolve("didLoad")
@@ -85,21 +85,19 @@ async function response(req, res) {
     var file = "";
     if (req.url === "/") {
         file = __dirname + "/index.html"
-    } else if (req.url === "/app.js") {
+    } else if (req.url === "/app.js" || req.url === "/lootmastersauth.json" || req.url === "/itemhandler.js") {
         file = __dirname + "/no.txt"
     } else if (req.url === "/game") {
         file = __dirname + "/game.html"
-    } else if (req.url === "/lootmastersauth.json") {
-        file = __dirname + "/no.txt"
     } else if (req.url.includes("/loginsubmit?")) {
         file = __dirname + "/loginsubmit.html"
     } else if (req.url.slice(0, 14) === "/signupsubmit?") {
         var obj = qs.parse(req.url.slice(14, req.url.length))
-        console.log(obj)
+        //console.log(obj)
         if (obj.username && obj.password) {
             var userfound = false
-            for(var x = 0; x < players.length; x++) {
-                if(players[x].username.toUpperCase() === obj.username.toUpperCase()) {
+            for (var x = 0; x < players.length; x++) {
+                if (players[x].username.toUpperCase() === obj.username.toUpperCase()) {
                     userfound = true
                     break
                 }
@@ -112,9 +110,9 @@ async function response(req, res) {
                     username: obj.username,
                     password: obj.password,
                     items: [{
-                        "desc" : "It's a basic boat to let you cross water.",
-                        "flags" : [ "noSell" ],
-                        "name" : "boat"
+                        "desc": "It's a basic boat to let you cross water.",
+                        "flags": ["noUse"],
+                        "name": "boat"
                     }],
                     treasure: "none",
                     online: false,
@@ -176,10 +174,10 @@ async function response(req, res) {
 })  */
 function authenticate(socket, data, callback) {
     //const {username, password} = data;
-    console.log(data)
+    //console.log(data)
     try {
         var user = findObjectByKey(players, "username", data.username) || findObjectByKey(players, "token", data.token)
-        if(user) {
+        if (user) {
             callback(null, user && (user.password === data.password || findObjectByKey(players, "token", data.token)));
         } else {
             callback(null, false);
@@ -193,7 +191,7 @@ function authenticate(socket, data, callback) {
 function postAuthenticate(socket, data) {
     var username = data.username
     console.log(socket.id + "(" + username + ") tried to join server")
-    if(findObjectByKey(players, "username", username)) {
+    if (findObjectByKey(players, "username", username)) {
         socket.on("storeTransferToken", function (token) {
             findObjectByKey(players, "username", username).token = token
             writeFB()
@@ -213,6 +211,7 @@ function simplifyPlayer(playerobj) {
 function disconnect(socket) {
     console.log("disconnected (auth)")
     var player = findObjectByKey(players, "id", socket.id)
+    var player = getPlayerById(socket.id)
     if (player) {
         player.online = false
         writeFB()
@@ -235,9 +234,10 @@ socketioAuth(io, {
     timeout: 500
 });
 io.on("connection", function (socket) {
+
     socket.on("disconnect", function () {
         console.log("disconnected")
-        var player = findObjectByKey(players, "id", socket.id)
+        var player = getPlayerById(socket.id)
         if (player) {
             player.online = false
             writeFB()
@@ -258,68 +258,93 @@ io.on("connection", function (socket) {
     })
     socket.on("checkAuthStatus", function () {
         console.log(findObjectByKey(players, "id", socket.id))
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             console.log("yes")
         }
     })
-    socket.on("requestitems", function() {
-        if(getPlayerById(socket.id)) {
-            socket.emit("getItems", getPlayerById(socket.id).items, getPlayerById(socket.id).gold)
+    socket.on("useItem", function (itemname, queryString) {
+        var params = qs.parse(queryString)
+        var player = getPlayerById(socket.id)
+        if (player) {
+            if (findObjectByKey(player.items, "name", itemname) && (!findObjectByKey(player.items, "name", itemname).flags || !findObjectByKey(player.items, "name", itemname).flags.includes("noUse"))) {
+                var item = findObjectByKey(player.items, "name", itemname)
+                eval(fs.readFileSync('itemhandler.js') + '')
+            }
         }
     })
-    socket.on("requesttreasure", function() {
-        if(getPlayerById(socket.id)) {
-            socket.emit("getTreasures", getPlayerById(socket.id).treasure)
+    socket.on("requestitems", function () {
+        var player = getPlayerById(socket.id)
+        if (player) {
+            socket.emit("getItems", player.items, player.gold)
         }
     })
-    socket.on("sellTreasure", function(name) {
-        if(getPlayerById(socket.id)) {
-            var player = getPlayerById(socket.id)
-            if(player.treasure && findObjectByKey(player.treasure, "name", name)) {
+    socket.on("requesttreasure", function () {
+        var player = getPlayerById(socket.id)
+        if (player) {
+            socket.emit("getTreasures", player.treasure)
+        }
+    })
+    socket.on("sellTreasure", function (name) {
+        var player = getPlayerById(socket.id)
+        if (player) {
+
+            if (player.treasure && findObjectByKey(player.treasure, "name", name)) {
                 var item = findObjectByKey(player.treasure, "name", name)
                 player.gold += item.value
                 player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", name)), 1)
-                if(player.treasure.length === 0) {
+                if (player.treasure.length === 0) {
                     player.treasure = "none"
                 }
-                socket.emit("soldTreasure", {title:"Sold successfully.", html: "You sold your " + item.rarity + " <b>" + item.name + "</b> for " + numberWithCommas(item.value) + " Gold."})
+                socket.emit("soldTreasure", {
+                    title: "Sold successfully.",
+                    html: "You sold your " + item.rarity + " <b>" + item.name + "</b> for " + numberWithCommas(item.value) + " Gold."
+                })
                 writeFB()
             }
         }
     })
     socket.on("gamemsg", function (msg, callback) {
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             //game chat handler
-            if (msg !== "" && msg !== "/me") {
-                var player = getPlayerById(socket.id)
+            if (msg !== "" /*&& !msg.match(/\/\w+/gm)*/) {
+                var global = true
                 var filteredmsg = msg.replace(/\</g, "&lt;");
                 filteredmsg = filteredmsg.replace(/\>/g, "&gt;");
                 if (filteredmsg.slice(0, 3) === "/me") {
                     filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
+                } else if(filteredmsg.slice(0, 7) === "/coords"){
+                    global = false
+                    filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
                 } else {
                     filteredmsg = "<b>" + player.username + ":</b> " + filteredmsg;
                 }
-                io.sockets.emit("chatUpdate", filteredmsg)
-
+                if(global) {
+                    io.sockets.emit("chatUpdate", filteredmsg)
+                } else {
+                    socket.emit("chatUpdate", filteredmsg)
+                }
                 callback()
-            } else if (msg === "/me") {
+            }/* else if (msg.match(/\/\w+/gm)) {
                 socket.emit("chatUpdate", "Invalid command.")
                 callback()
-            }
+            }*/
         }
     })
     socket.on("dig", function (px, py) {
-        if (getPlayerById(socket.id)) {
-            var player = getPlayerById(socket.id)
+        var player = getPlayerById(socket.id)
+        if (player) {
+
             var noise = getNoise(px, py)
             console.log(noise)
-            player.digging = true
-            if(inRangeExc(noise, 0, 40) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y === py)) {
+
+            if (inRangeExc(noise, 0, 40) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y === py)) {
                 socket.emit("chatUpdate", "Can't dig there.")
-                player.digging = false
-            } else {
-                socket.emit("chatUpdate", "Digging...")
-                socket.emit("chatUpdate", "<div id='myProgress'><div id='myBar'></div></div><script>move(" + player.digTime + ")</script>")
+            } else if(!player.digging) {
+                player.digging = true
+                socket.emit("chatUpdate", "Digging (" + numberWithCommas(player.digTime) + " ms)...")
+                //socket.emit("chatUpdate", "<div id='myProgress'><div id='myBar'></div></div><script>move(" + player.digTime + ")</script>")
                 setTimeout(function () {
                     if (/*(inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && */((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(6) === "3" && parseInt(((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(8)) % 2 === 0 && player.digging) {
                         revealedTreasures.push({x: px, y: py})
@@ -370,10 +395,10 @@ io.on("connection", function (socket) {
                             }
                             treasure.name = sentencer.make(type + " {{noun}}")
                         }
-                        if (getPlayerById(socket.id).treasure === "none" || !getPlayerById(socket.id).treasure) {
-                            getPlayerById(socket.id).treasure = []
+                        if (player.treasure === "none" || !player.treasure) {
+                            player.treasure = []
                         }
-                        getPlayerById(socket.id).treasure.push(treasure)
+                        player.treasure.push(treasure)
                         socket.emit("gotTreasure", treasure.name)
                         socket.emit("foundTreasureChat", treasure.name)
                         if (treasure.rarity === "legendary") {
@@ -386,6 +411,31 @@ io.on("connection", function (socket) {
                         //revealedTreasures.push({x: px, y: py})
                         player.digging = false
                         socket.emit("noTreasure")
+                        var specialEvent = (getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
+                        if(specialEvent) {
+                            eventSelector = 1 //getRandomInt(1, 5) implement later lmao
+                            switch(eventSelector) {
+                                case 1:
+                                    specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
+                                    player.items.push({
+                                        "name": "teleporter module",
+                                        "desc": "Teleports you anywhere on the map once.",
+                                        "params": ["x", "y"]
+                                    })
+                                    socket.emit("getItems", player.items, player.gold)
+                                    writeFB()
+                                    break
+                                case 2:
+                                    break
+                                case 3:
+                                    break
+                                case 4:
+                                    break
+                                default:
+                                    break
+                            }
+                            socket.emit("alert", {title: "Something happened!", html: specialEvent})
+                        }
                     }
                 }, player.digTime)
             }
@@ -393,18 +443,20 @@ io.on("connection", function (socket) {
     })
     socket.on("updatePos", function (px, py) {
         //console.log(findObjectByKey(players, "id", socket.id))
-        if (getPlayerById(socket.id) && !getPlayerById(socket.id).digging && Math.abs(findObjectByKey(players, "id", socket.id).x - px) <= 1 && Math.abs(findObjectByKey(players, "id", socket.id).y - py) <= 1) {
+        var player = getPlayerById(socket.id)
+        if (player && !player.digging && Math.abs(findObjectByKey(players, "id", socket.id).x - px) <= 1 && Math.abs(findObjectByKey(players, "id", socket.id).y - py) <= 1) {
             //console.log("updated " + socket.id)
             findObjectByKey(players, "id", socket.id).x = px
             findObjectByKey(players, "id", socket.id).y = py
             writeFB()
             io.sockets.emit("requestNewPlayerPos")
-        } else if(getPlayerById(socket.id) && getPlayerById(socket.id).digging) {
-            socket.emit("diggingLock", getPlayerById(socket.id).x, getPlayerById(socket.id).y)
+        } else if (player && player.digging) {
+            socket.emit("diggingLock", player.x, player.y)
         }
     })
     socket.on("needNewPlayerPos", function (px, py, lb, rb, ub, lob) {
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             var playersInView = []
             for (var x = 0; x < players.length; x++) {
                 if (players[x].x < rb && players[x].x > lb && players[x].y < lob && players[x].y > ub && players[x].online) {
@@ -415,7 +467,8 @@ io.on("connection", function (socket) {
         }
     })
     socket.on("needNewTreasurePos", function (px, py, lb, rb, ub, lob) {
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             var treasureInView = []
             for (var x = 0; x < revealedTreasures.length; x++) {
                 if (revealedTreasures[x].x < rb && revealedTreasures[x].x > lb && revealedTreasures[x].y < lob && revealedTreasures[x].y > ub) {
@@ -426,7 +479,8 @@ io.on("connection", function (socket) {
         }
     })
     socket.on("getFrame", function (px, py, direction) {
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             //findObjectByKey(players, "id", socket.id).x = px
             //findObjectByKey(players, "id", socket.id).y = py
 
@@ -492,7 +546,8 @@ io.on("connection", function (socket) {
         }
     })
     socket.on("getChunks", function (chunks) {
-        if (getPlayerById(socket.id)) {
+        var player = getPlayerById(socket.id)
+        if (player) {
             var allNewChunks = []
             for (var x = 0; x < chunks.length; x++) {
                 var chunk = chunks[x]
@@ -570,6 +625,7 @@ function copyObject(src) {
 function capWord(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
+
 function numberWithCommas(nStr) {
     nStr += '';
     var x = nStr.split('.');

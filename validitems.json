@@ -1,0 +1,14 @@
+{
+  "items": [
+    {
+      "name": "boat",
+      "desc": "It's a basic boat to let you cross water.",
+      "flags": ["noUse"]
+    },
+    {
+      "name": "teleporter module",
+      "desc": "Teleports you anywhere on the map once.",
+      "params": ["x", "y"]
+    }
+  ]
+}
