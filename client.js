@@ -442,7 +442,7 @@ function move(time) {
         i = 1;
         var elem = document.getElementById("myBar");
         var width = 1;
-        var id = setInterval(frame, time / 100);
+        var id = setInterval(frame, (time / 100) * 0.9 );
         function frame() {
             if (width >= 100) {
                 clearInterval(id);
