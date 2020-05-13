@@ -312,6 +312,7 @@ io.on("connection", function (socket) {
                 player.digging = false
             } else {
                 socket.emit("chatUpdate", "Digging...")
+                socket.emit("chatUpdate", "<div id='myProgress'><div id='myBar'></div></div><script>move(" + player.digTime + ")</script>")
                 setTimeout(function () {
                     if (/*(inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && */((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(6) === "3" && ((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(4) === "3" && player.digging) {
                         revealedTreasures.push({x: px, y: py})

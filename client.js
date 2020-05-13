@@ -436,6 +436,25 @@ socket.on("authenticated", function() {
         }
     })
 })
+var i = 0;
+function move(time) {
+    if (i == 0) {
+        i = 1;
+        var elem = document.getElementById("myBar");
+        var width = 1;
+        var id = setInterval(frame, time / 100);
+        function frame() {
+            if (width >= 100) {
+                clearInterval(id);
+                i = 0;
+                elem.id = ""
+            } else {
+                width++;
+                elem.style.width = width + "%";
+            }
+        }
+    }
+}
 function addToChat(msg) {
     var final_message = $("<p />").html(msg);
     $("#history").append(final_message);
