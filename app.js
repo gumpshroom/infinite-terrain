@@ -97,7 +97,14 @@ async function response(req, res) {
         var obj = qs.parse(req.url.slice(14, req.url.length))
         console.log(obj)
         if (obj.username && obj.password) {
-            if (obj.username.match("^(?=[A-Za-z_\\d]*[A-Za-z])[A-Za-z_\\d]{4,20}$") && !findObjectByKey(players, "username", obj.username)) {
+            var userfound = false
+            for(var x = 0; x < players.length; x++) {
+                if(players[x].username.toUpperCase() === obj.username.toUpperCase()) {
+                    userfound = true
+                    break
+                }
+            }
+            if (obj.username.match("^(?=[A-Za-z_\\d]*[A-Za-z])[A-Za-z_\\d]{4,20}$") && !userfound) {
                 var player = {
                     x: getRandomInt(100, 200),
                     y: getRandomInt(100, 200),
