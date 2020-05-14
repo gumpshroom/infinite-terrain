@@ -180,9 +180,14 @@ function handleArrowKeys() {
                 px = rightbound - 1
                 leftbound = leftbound - 129
                 renderMap()
-                socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
                 socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
-                socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
+                setTimeout(function() {
+                    socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
+                }, 200)
+                setTimeout(function() {
+                    socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
+                }, 2000)
+
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
 
@@ -196,8 +201,12 @@ function handleArrowKeys() {
                 leftbound = rightbound
                 rightbound = rightbound + 129
                 renderMap()
-                socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
-                socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
+                setTimeout(function() {
+                    socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
+                }, 2000)
+                setTImeout(function() {
+                    socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
+                }, 200)
                 socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
@@ -213,8 +222,12 @@ function handleArrowKeys() {
                 py = lowbound - 1
                 upbound = upbound - 97
                 renderMap()
-                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), upbound - 48, "up")
-                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py - 48, "left")
+                setTimeout(function() {
+                    socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), upbound - 48, "up")
+                }, 2000)
+                setTimeout(function() {
+                    socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py - 48, "left")
+                }, 200)
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py - 48, "right")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
@@ -229,8 +242,12 @@ function handleArrowKeys() {
                 upbound = lowbound
                 lowbound = lowbound + 97
                 renderMap()
-                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), lowbound + 48, "down")
-                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py + 48, "left")
+                setTimeout(function() {
+                    socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), lowbound + 48, "down")
+                }, 2000)
+                setTimeout(function() {
+                    socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py + 48, "left")
+                }, 200)
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py + 48, "right")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
