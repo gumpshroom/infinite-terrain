@@ -444,7 +444,7 @@ io.on("connection", function (socket) {
     socket.on("updatePos", function (px, py) {
         //console.log(findObjectByKey(players, "id", socket.id))
         var player = getPlayerById(socket.id)
-        if (player && !player.digging && Math.abs(findObjectByKey(players, "id", socket.id).x - px) <= 1 && Math.abs(findObjectByKey(players, "id", socket.id).y - py) <= 1 && px < 2147483647 && px > -2147483647 && py < 2147483647 && py > -2147483647) {
+        if (player && !player.digging && Math.abs(findObjectByKey(players, "id", socket.id).x - px) <= 1 && Math.abs(findObjectByKey(players, "id", socket.id).y - py) <= 1 && px < Number.MAX_SAFE_INTEGER && px > -Number.MAX_SAFE_INTEGER && py < Number.MAX_SAFE_INTEGER && py > -Number.MAX_SAFE_INTEGER) {
             //console.log("updated " + socket.id)
             findObjectByKey(players, "id", socket.id).x = px
             findObjectByKey(players, "id", socket.id).y = py
