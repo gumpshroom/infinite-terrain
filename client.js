@@ -204,7 +204,7 @@ function handleArrowKeys() {
                 setTimeout(function() {
                     socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
                 }, 2000)
-                setTImeout(function() {
+                setTimeout(function() {
                     socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
                 }, 200)
                 socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
