@@ -254,9 +254,9 @@ function renderMap() {
     }
 }
 function renderMinimap() {
-    for(var y = 0; y < minimap.length; y++) {
+    for(var y = 0, leny = minimap.length; y < leny; y++) {
         var absolutey = py - y - 48
-        for(var x = 0; x < minimap[y].length; x++) {
+        for(var x = 0, lenx = minimap[y].length; x < lenx; x++) {
             var absolutex = px - x - 64
             minimapGraphics.stroke(minimap[y][x].color)
             minimapGraphics.fill(minimap[y][x].color)
@@ -266,7 +266,7 @@ function renderMinimap() {
 
 }
 function renderPlayers() {
-    for(var i = 0; i < playersInView.length; i++) {
+    for(var i = 0, len = playersInView.length; i < len; i++) {
 
         if(playersInView[i].id === socket.id) {
             stroke(255)
@@ -284,7 +284,7 @@ function renderPlayers() {
     }
 }
 function renderTreasure() {
-    for(var i = 0; i < treasureInView.length; i++) {
+    for(var i = 0, len = treasureInView.length; i < len; i++) {
         stroke(dug)
         rect((treasureInView[i].x - leftbound) * 5, (treasureInView[i].y - upbound) * 5, 1)
     }
