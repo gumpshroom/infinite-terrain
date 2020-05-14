@@ -485,63 +485,18 @@ io.on("connection", function (socket) {
             //findObjectByKey(players, "id", socket.id).y = py
 
             //console.log(px, py)
-            var leftbound = px - 65
-            var rightbound = px + 65
-            var upbound = py - 49
-            var lowbound = py + 49
-            var currentMap = []
-            for (var y = upbound; y < lowbound; y++) {
-                var row = []
-                for (var x = leftbound; x < rightbound; x++) {
-                    var obj = {}
-                    /*if(findObjectByKey(players, "x", x) && findObjectByKey(players, "x", x).y === y) {
-                        obj = {
-                            noise: 999,
-                            x: x,
-                            y: y,
-                            id: findObjectByKey(players, "x", x).id,
-                            color: 'red'
-                        }
-                    } else {*/
-
-                    obj = {
-                        noise: getNoise(x, y),
-                        x: x,
-                        y: y,
-                        id: 0
-                    }
-                    /*if (findObjectByKey(revealedTreasures, "x", x) && findObjectByKey(revealedTreasures, "x", x).y === y) {
-                        obj.color = dug
-                    } else*/
-                    if (obj.noise > 90 && obj.noise <= 100) {
-                        obj.color = dirt
-                    } else if (obj.noise > 80 && obj.noise <= 90) {
-                        obj.color = dirt
-                    } else if (obj.noise > 70 && obj.noise <= 80) {
-                        obj.color = grass
-                    } else if (obj.noise > 60 && obj.noise <= 70) {
-                        obj.color = rock
-                    } else if (obj.noise > 50 && obj.noise <= 60) {
-                        obj.color = grass
-                    } else if (obj.noise > 40 && obj.noise <= 50) {
-                        obj.color = sand
-                    } else if (obj.noise > 30 && obj.noise <= 40) {
-                        obj.color = water
-                    } else if (obj.noise > 20 && obj.noise <= 30) {
-                        obj.color = water
-                    } else if (obj.noise > 10 && obj.noise <= 20) {
-                        obj.color = water
-                    } else if (obj.noise <= 10) {
-                        obj.color = water
-                    }
-                    //}
-
-                    row.push(obj)
-                }
-                currentMap.push(row)
+            var mainresult = generateFrame(px, py)
+            if(!direction) {
+                var leftresult = generateFrame(px - 128, py)
+                var rightresult = generateFrame(px + 128, py)
+                var topresult = generateFrame(px, py - 96)
+                var bottomresult = generateFrame(px, py + 96)
+                socket.emit("loadMap", mainresult.main, {left: leftresult.main, right: rightresult.main, top: topresult.main, bottom: bottomresult.main}, mainresult.mini)
+            } else {
+                socket.emit("loadMap", mainresult.main, direction, mainresult.mini)
             }
             //console.log(currentMap)
-            socket.emit("loadMap", currentMap, direction)
+
             //io.sockets.emit("playerUpdate")
         }
     })
@@ -591,8 +546,13 @@ function findObjectByKey(array, key, value) {
 
 function getNoise(x, y) {
     return Math.abs(Perlin.simplex2(x / 500, y / 500) * 100)
+    //return Math.abs(Perlin.simplex2(x / 500, y / 500) * 100)
+
     //return Math.abs(simplex.noise2D(x, y)) * 100
     //return Math.floor(grid.getPixel(x / scalefactor, y / scalefactor) * 100)
+}
+function getMinimapNoise(x, y) {
+    return Math.abs(Perlin.simplex2(x / 20, y / 20) * 100)
 }
 
 const pointInRect = ({x1, y1, x2, y2}, {x, y}) => (
@@ -636,4 +596,96 @@ function numberWithCommas(nStr) {
         x1 = x1.replace(rgx, '$1' + ',' + '$2');
     }
     return x1 + x2;
+}
+function generateFrame(px, py) {
+    var leftbound = px - 65
+    var rightbound = px + 65
+    var upbound = py - 49
+    var lowbound = py + 49
+    var currentMap = []
+    var minimap = []
+    for (var y = upbound; y < lowbound; y++) {
+        var row = []
+        var minirow = []
+        for (var x = leftbound; x < rightbound; x++) {
+            var obj = {}
+            /*if(findObjectByKey(players, "x", x) && findObjectByKey(players, "x", x).y === y) {
+                obj = {
+                    noise: 999,
+                    x: x,
+                    y: y,
+                    id: findObjectByKey(players, "x", x).id,
+                    color: 'red'
+                }
+            } else {*/
+
+            obj = {
+                noise: getNoise(x, y),
+                x: x,
+                y: y,
+                id: 0
+            }
+            /*if (findObjectByKey(revealedTreasures, "x", x) && findObjectByKey(revealedTreasures, "x", x).y === y) {
+                obj.color = dug
+            } else*/
+            if (obj.noise > 90 && obj.noise <= 100) {
+                obj.color = dirt
+            } else if (obj.noise > 80 && obj.noise <= 90) {
+                obj.color = dirt
+            } else if (obj.noise > 70 && obj.noise <= 80) {
+                obj.color = grass
+            } else if (obj.noise > 60 && obj.noise <= 70) {
+                obj.color = rock
+            } else if (obj.noise > 50 && obj.noise <= 60) {
+                obj.color = grass
+            } else if (obj.noise > 40 && obj.noise <= 50) {
+                obj.color = sand
+            } else if (obj.noise > 30 && obj.noise <= 40) {
+                obj.color = water
+            } else if (obj.noise > 20 && obj.noise <= 30) {
+                obj.color = water
+            } else if (obj.noise > 10 && obj.noise <= 20) {
+                obj.color = water
+            } else if (obj.noise <= 10) {
+                obj.color = water
+            }
+            //}
+            var miniobj = {
+                noise: getMinimapNoise(x, y),
+                x: x,
+                y: y,
+                id: 0
+            }
+            /*if (findObjectByKey(revealedTreasures, "x", x) && findObjectByKey(revealedTreasures, "x", x).y === y) {
+                obj.color = dug
+            } else*/
+            if (miniobj.noise > 90 && miniobj.noise <= 100) {
+                miniobj.color = dirt
+            } else if (miniobj.noise > 80 && miniobj.noise <= 90) {
+                miniobj.color = dirt
+            } else if (miniobj.noise > 70 && miniobj.noise <= 80) {
+                miniobj.color = grass
+            } else if (miniobj.noise > 60 && miniobj.noise <= 70) {
+                miniobj.color = rock
+            } else if (miniobj.noise > 50 && miniobj.noise <= 60) {
+                miniobj.color = grass
+            } else if (miniobj.noise > 40 && miniobj.noise <= 50) {
+                miniobj.color = sand
+            } else if (miniobj.noise > 30 && miniobj.noise <= 40) {
+                miniobj.color = water
+            } else if (miniobj.noise > 20 && miniobj.noise <= 30) {
+                miniobj.color = water
+            } else if (miniobj.noise > 10 && miniobj.noise <= 20) {
+                miniobj.color = water
+            } else if (miniobj.noise <= 10) {
+                miniobj.color = water
+            }
+            minirow.push(miniobj)
+            row.push(obj)
+        }
+        currentMap.push(row)
+        minimap.push(minirow)
+
+    }
+    return {main: currentMap, mini: minimap}
 }

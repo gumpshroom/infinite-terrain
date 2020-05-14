@@ -1,6 +1,12 @@
 var socket = io();
+p5.disableFriendlyErrors = true;
 var keys = []
 var tiles = []
+var topmap = []
+var bottommap = []
+var leftmap = []
+var rightmap = []
+var minimap = []
 var playersInView = []
 var treasureInView = []
 var shouldHandleKeyDown = true;
@@ -12,7 +18,7 @@ var py = getRandomInt(100, 150)
 var psx = 64
 var psy = 48
 var gold = 0
-var mapGraphics
+var mapGraphics, minimapGraphics
 var leftbound = px - 65,
     rightbound = px + 65,
     upbound = py - 49,
@@ -35,6 +41,7 @@ function setup() {
         focus = "canvas"
     })
     mapGraphics = createGraphics(640, 480)
+    minimapGraphics = createGraphics(640, 480)
     frameRate(30);
     stroke(255);
     strokeWeight(10);
@@ -107,6 +114,7 @@ function setup() {
 function draw() {
     //background(255);
     image(mapGraphics, 0, 0)
+    //image(minimapGraphics, 0, 0, 128, 96)
     if (keyIsDown(LEFT_ARROW)) {
         px -= 1;
         socket.emit("updatePos", px, py)
@@ -129,29 +137,104 @@ function draw() {
     /*if (keyIsDown(78)) {
         socket.emit("dig", px, py)
     }*/
-    handleArrowKeys()
+
 
     renderTreasure()
+
+
     renderPlayers();
 
 
-}
+    handleArrowKeys()
 
+
+
+
+}
+function arraysEqual(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (a.length !== b.length) return false;
+
+    // If you don't care about the order of the elements inside
+    // the array, you should sort both arrays here.
+    // Please note that calling sort on an array will modify that array.
+    // you might want to clone your array first.
+
+    for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
 function handleArrowKeys() {
     if(keyIsDown(LEFT_ARROW) || keyIsDown(RIGHT_ARROW) || keyIsDown(UP_ARROW) || keyIsDown(DOWN_ARROW)) {
         //console.log(px, py)
         if (mapLoaded) {
             if (px <= leftbound) {
+                rightmap = tiles
+                tiles = leftmap
+                topmap = []
+                bottommap = []
+                leftmap = []
+                rightbound = leftbound
+                px = rightbound - 1
+                leftbound = leftbound - 129
+                renderMap()
                 socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
+                socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
+                socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
+                socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
+                socket.emit("updatePos", px, py)
+
                 mapLoaded = false
             } else if (px >= rightbound) {
+                leftmap = tiles
+                tiles = rightmap
+                topmap = []
+                bottommap = []
+                rightmap = []
+                leftbound = rightbound
+                rightbound = rightbound + 129
+                renderMap()
                 socket.emit("getFrame", rightbound + 64, Math.floor((upbound + lowbound) / 2), "right")
+                socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
+                socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
+                socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
+                socket.emit("updatePos", px, py)
+
                 mapLoaded = false
             } else if (py <= upbound) {
+                bottommap = tiles
+                tiles = topmap
+                topmap = []
+                leftmap = []
+                rightmap = []
+                lowbound = upbound
+                py = lowbound - 1
+                upbound = upbound - 97
+                renderMap()
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), upbound - 48, "up")
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py - 48, "left")
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py - 48, "right")
+                socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
+                socket.emit("updatePos", px, py)
+
                 mapLoaded = false
             } else if (py >= lowbound) {
+                topmap = tiles
+                tiles = bottommap
+                bottommap = []
+                leftmap = []
+                rightmap = []
+                upbound = lowbound
+                lowbound = lowbound + 97
+                renderMap()
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2), lowbound + 48, "down")
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py + 48, "left")
+                socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py + 48, "right")
+                socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
+                socket.emit("updatePos", px, py)
+
                 mapLoaded = false
             }
 
@@ -159,13 +242,25 @@ function handleArrowKeys() {
     }
 }
 function renderMap() {
-    for(var y = 0; y < tiles.length; y++) {
+    for(var y = 0, leny = tiles.length; y < leny; y++) {
         var absolutey = py - y - 48
-        for(var x = 0; x < tiles[y].length; x++) {
+        for(var x = 0, lenx = tiles[y].length; x < lenx; x++) {
             var absolutex = px - x - 64
+            //console.log(tiles[y][x].color)
             mapGraphics.stroke(tiles[y][x].color)
             mapGraphics.fill(tiles[y][x].color)
             mapGraphics.rect(x * 5, y * 5, 5, 5)
+        }
+    }
+}
+function renderMinimap() {
+    for(var y = 0; y < minimap.length; y++) {
+        var absolutey = py - y - 48
+        for(var x = 0; x < minimap[y].length; x++) {
+            var absolutex = px - x - 64
+            minimapGraphics.stroke(minimap[y][x].color)
+            minimapGraphics.fill(minimap[y][x].color)
+            minimapGraphics.rect(x * 5, y * 5, 5, 5)
         }
     }
 
@@ -327,7 +422,7 @@ socket.on("authenticated", function() {
         px = x
         py = y
     })
-    socket.on("loadMap", function (newMap, direction) {
+    socket.on("loadMap", function (newMap, direction, mmap) {
         /*var tempMap = []
         for(var i = 10; i < newMap.length - 10; i++) {
             var row = []
@@ -338,34 +433,42 @@ socket.on("authenticated", function() {
         }*/
         switch (direction) {
             case "up":
-                lowbound = upbound
-                py = lowbound - 1
-                upbound = upbound - 97
+                console.log("loaded top map")
+
+                topmap = newMap
                 break
             case "down":
-                //py += 1
-                upbound = lowbound
-                lowbound = lowbound + 97
+
+                bottommap = newMap
                 break
             case "left":
-                rightbound = leftbound
-                px = rightbound - 1
-                leftbound = leftbound - 129
+
+                leftmap = newMap
                 break
             case "right":
-                //px += 1
-                leftbound = rightbound
-                rightbound = rightbound + 129
+                console.log("loaded right map")
+
+                rightmap = newMap
                 break
             default:
+                if(direction) {
+                    console.log("no direction provided, loading all")
+                    leftmap = direction.left
+                    rightmap = direction.right
+                    topmap = direction.top
+                    bottommap = direction.bottom
+                    tiles = newMap
+                    renderMap()
+                }
                 break
         }
-
+        //
         console.log("bounds updated: l:", leftbound, ", r:", rightbound, ", u:", upbound, ", d:", lowbound)
         mapLoaded = true
         //console.log("received map")
-        tiles = newMap
-        renderMap()
+        minimap = mmap
+
+        //renderMinimap()
         //console.log(tiles)
     })
     socket.on("requestNewPlayerPos", function () {
