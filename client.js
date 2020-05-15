@@ -407,6 +407,7 @@ socket.on("authenticated", function() {
     })
     socket.on("authSuccess", function (x, y) {
         console.log("auth success")
+        localStorage.clear()
         px = x
         py = y
         leftbound = px - 65

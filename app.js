@@ -192,6 +192,7 @@ function postAuthenticate(socket, data) {
     var username = data.username
     console.log(socket.id + "(" + username + ") tried to join server")
     if (findObjectByKey(players, "username", username)) {
+
         socket.on("storeTransferToken", function (token) {
             findObjectByKey(players, "username", username).token = token
             writeFB()

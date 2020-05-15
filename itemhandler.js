@@ -1,10 +1,10 @@
 switch(itemname) {
     case "teleporter module":
-        if(validateParams(params) && /\d/.test(params.x) && /\d/.test(params.y) && parseInt(params.x) < 2147483647 && parseInt(params.x) > -2147483647 && parseInt(params.y) > -2147483647 && parseInt(params.y) < 2147483647) {
+        if(validateParams(params) && /\d/.test(params.x) && /\d/.test(params.y) && parseInt(params.x) < Number.MAX_SAFE_INTEGER && parseInt(params.x) > -Number.MAX_SAFE_INTEGER && parseInt(params.y) > -Number.MAX_SAFE_INTEGER && parseInt(params.y) < Number.MAX_SAFE_INTEGER) {
             if(!player.digging) {
                 player.x = parseInt(params.x)
                 player.y = parseInt(params.y)
-                player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", itemname)))
+                player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", itemname)), 1)
                 writeFB()
                 socket.emit("requestGetFrame", player.x, player.y)
                 socket.emit("itemsUpdated")
