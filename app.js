@@ -90,7 +90,7 @@ async function response(req, res) {
     } else if (req.url === "/game") {
         file = __dirname + "/game.html"
     } else if (req.url.includes("/loginsubmit?")) {
-        file = __dirname + "/loginsubmit.html"
+        file = "/no.txt"//__dirname + "/loginsubmit.html"
     } else if (req.url.slice(0, 14) === "/signupsubmit?") {
         var obj = qs.parse(req.url.slice(14, req.url.length))
         //console.log(obj)
@@ -176,9 +176,9 @@ function authenticate(socket, data, callback) {
     //const {username, password} = data;
     //console.log(data)
     try {
-        var user = findObjectByKey(players, "username", data.username) || findObjectByKey(players, "token", data.token)
+        var user = findObjectByKey(players, "username", data.u) //|| findObjectByKey(players, "token", data.token)
         if (user) {
-            callback(null, user && (user.password === data.password || findObjectByKey(players, "token", data.token)));
+            callback(null, user && user.password === data.p)//(user.password === data.p || findObjectByKey(players, "token", data.token)));
         } else {
             callback(null, false);
         }
@@ -192,7 +192,6 @@ function postAuthenticate(socket, data) {
     var username = data.username
     console.log(socket.id + "(" + username + ") tried to join server")
     if (findObjectByKey(players, "username", username)) {
-
         socket.on("storeTransferToken", function (token) {
             findObjectByKey(players, "username", username).token = token
             writeFB()
@@ -211,7 +210,7 @@ function simplifyPlayer(playerobj) {
 
 function disconnect(socket) {
     console.log("disconnected (auth)")
-    var player = findObjectByKey(players, "id", socket.id)
+    //var player = findObjectByKey(players, "id", socket.id)
     var player = getPlayerById(socket.id)
     if (player) {
         player.online = false
@@ -244,15 +243,13 @@ io.on("connection", function (socket) {
             writeFB()
         }
     })
-    socket.on("tokenToId", function (token) {
-        console.log(token)
-        if (findObjectByKey(players, "token", token)) {
-            console.log("token found")
-            findObjectByKey(players, "token", token).id = socket.id
-            findObjectByKey(players, "token", token).online = true
-            findObjectByKey(players, "token", token).token = null
+    socket.on("getInfoOnLogin", function (u, p) {
+        if (findObjectByKey(players, "username", u) && findObjectByKey(players, "username", u).password === p) {
+            console.log("player found")
+            findObjectByKey(players, "username", u).id = socket.id
+            findObjectByKey(players, "username", u).online = true
             writeFB()
-            socket.emit("authSuccess", findObjectByKey(players, "id", socket.id).x, findObjectByKey(players, "id", socket.id).y)
+            socket.emit("gotInfo", findObjectByKey(players, "id", socket.id).x, findObjectByKey(players, "id", socket.id).y)
         } else {
             socket.emit("authFail")
         }
@@ -455,6 +452,28 @@ io.on("connection", function (socket) {
             socket.emit("diggingLock", player.x, player.y)
         }
     })
+    socket.on("updateDir", function(directions) {
+        var player = getPlayerById(socket.id)
+        if (player && !player.digging && player.x < Number.MAX_SAFE_INTEGER && player.x > -Number.MAX_SAFE_INTEGER && player.y < Number.MAX_SAFE_INTEGER && player.y > -Number.MAX_SAFE_INTEGER) {
+            //console.log("updated " + socket.id)
+            if(directions.includes("left")) {
+                player.x --
+            }
+            if(directions.includes("right")) {
+                player.x ++
+            }
+            if(directions.includes("up")) {
+                player.y --
+            }
+            if(directions.includes("down")) {
+                player.y ++
+            }
+            writeFB()
+            io.sockets.emit("requestNewPlayerPos")
+        } else if (player && player.digging) {
+            socket.emit("diggingLock", player.x, player.y)
+        }
+    })
     socket.on("needNewPlayerPos", function (px, py, lb, rb, ub, lob) {
         var player = getPlayerById(socket.id)
         if (player) {
@@ -563,7 +582,7 @@ const pointInRect = ({x1, y1, x2, y2}, {x, y}) => (
 function objArrayToString(arr) {
     var string = "[";
     for (var i = 0; i < arr.length; i++) {
-        if (i != arr.length - 1) {
+        if (i !== arr.length - 1) {
             string += JSON.stringify(arr[i]) + ", "
         } else {
             string += JSON.stringify(arr[i])

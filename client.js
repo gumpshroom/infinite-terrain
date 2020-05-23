@@ -1,5 +1,6 @@
 var socket = io();
 p5.disableFriendlyErrors = true;
+var directions = []
 var keys = []
 var tiles = []
 var topmap = []
@@ -30,7 +31,6 @@ const dirt = '#6b4433',
     rock = '#828282',
     dug = '#3b1e0f'
 let direction = 'right';
-
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
@@ -115,25 +115,32 @@ function draw() {
     //background(255);
     image(mapGraphics, 0, 0)
     //image(minimapGraphics, 0, 0, 128, 96)
+    directions = []
     if (keyIsDown(LEFT_ARROW)) {
         px -= 1;
-        socket.emit("updatePos", px, py)
+        directions.push("left")
+        //socket.emit("updatePos", px, py)
     }
 
     if (keyIsDown(RIGHT_ARROW)) {
         px += 1;
-        socket.emit("updatePos", px, py)
+        directions.push("right")
+        //socket.emit("updatePos", px, py)
     }
 
     if (keyIsDown(UP_ARROW)) {
         py -= 1;
-        socket.emit("updatePos", px, py)
+        directions.push("up")
+        //socket.emit("updatePos", px, py)
     }
 
     if (keyIsDown(DOWN_ARROW)) {
         py += 1;
-        socket.emit("updatePos", px, py)
+        directions.push("down")
+        //socket.emit("updatePos", px, py)
     }
+
+    socket.emit("updateDir", directions)
     /*if (keyIsDown(78)) {
         socket.emit("dig", px, py)
     }*/
@@ -393,21 +400,17 @@ function useItem(itemname, params) {
 }
 
 //socket.id = localStorage.getItem("transferToken")
-socket.emit("authentication", {token:localStorage.getItem("transferToken")})
+socket.emit("authentication", {u:localStorage.u, p: localStorage.p})
+
 socket.on("unauthorized", function() {
     location.href = "/"
 })
 socket.on("authenticated", function() {
-    socket.emit("tokenToId", localStorage.getItem("transferToken"))
+    //socket.emit("tokenToId", localStorage.getItem("transferToken"))
+    console.log("auth success")
 
-    socket.on("authFail", function () {
-        Swal.fire("Authentication fail.").then(function () {
-            location.href = "/"
-        })
-    })
-    socket.on("authSuccess", function (x, y) {
-        console.log("auth success")
-        localStorage.clear()
+    socket.emit("getInfoOnLogin", localStorage.u, localStorage.p)
+    socket.on("gotInfo", function(x, y) {
         px = x
         py = y
         leftbound = px - 65
@@ -418,6 +421,7 @@ socket.on("authenticated", function() {
         socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
         socket.emit('getFrame', x, y)
         socket.emit("requesttreasure")
+        localStorage.clear()
     })
     socket.on("noTreasure", function() {
         addToChat("No treasure found.")
