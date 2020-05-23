@@ -190,7 +190,7 @@ function handleArrowKeys() {
                 socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
                 setTimeout(function() {
                     socket.emit("getFrame", px - 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
-                }, 200)
+                }, 20)
                 setTimeout(function() {
                     socket.emit("getFrame", leftbound - 64, Math.floor((upbound + lowbound) / 2), "left")
                 }, 2000)
@@ -213,7 +213,7 @@ function handleArrowKeys() {
                 }, 2000)
                 setTimeout(function() {
                     socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) - 96, "up")
-                }, 200)
+                }, 20)
                 socket.emit("getFrame", px + 64, Math.floor((upbound + lowbound) / 2) + 96, "down")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
@@ -234,7 +234,7 @@ function handleArrowKeys() {
                 }, 2000)
                 setTimeout(function() {
                     socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py - 48, "left")
-                }, 200)
+                }, 20)
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py - 48, "right")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)
@@ -254,7 +254,7 @@ function handleArrowKeys() {
                 }, 2000)
                 setTimeout(function() {
                     socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) - 128, py + 48, "left")
-                }, 200)
+                }, 20)
                 socket.emit("getFrame", Math.floor((leftbound + rightbound) / 2) + 128, py + 48, "right")
                 socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
                 socket.emit("updatePos", px, py)

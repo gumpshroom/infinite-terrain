@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: infiniteterrain
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: infiniteterrain
+  template:
+    metadata:
+      labels:
+        app: infiniteterrain
+    spec:
+      containers:
+        - image: gumpshroom/infiniteterrain:node
+          name: infiniteterrain
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: infiniteterrain
+  annotations:
+    dev.okteto.com/auto-ingress: "true"
+spec:
+  type: ClusterIP
+  ports:
+    - name: "infiniteterrain"
+      port: 3000
+  selector:
+    app: infiniteterrain
