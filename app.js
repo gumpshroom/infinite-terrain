@@ -14,6 +14,7 @@ firebase.initializeApp({
 var db = firebase.database();
 var FirebaseData = db.ref("data");
 var appdata = {};
+
 const socketioAuth = require("socketio-auth");
 
 var transporter = nodemailer.createTransport({
@@ -73,6 +74,10 @@ async function setup() {
             revealedTreasures = appdata.treasure
         });
         app.listen(process.env.PORT || 3000);
+        for(var x = 0; x < players.length; x++) {
+            players[x].online = false
+        }
+        writeFB()
     }
 }
 
@@ -111,7 +116,7 @@ async function response(req, res) {
                     password: obj.password,
                     items: [{
                         "desc": "It's a basic boat to let you cross water.",
-                        "flags": ["noUse"],
+                        "flags": ["noUse", "noTrade"],
                         "name": "boat"
                     }],
                     treasure: "none",
@@ -302,6 +307,49 @@ io.on("connection", function (socket) {
             }
         }
     })
+    var chatCommands = [{
+        name: "/coords"
+    }, {
+        name: "/me"
+    }, {
+        name: "/trade",
+        args: ["player"]
+    }]
+    function checkChatMsg(msg) {
+        return findObjectByKey(chatCommands, "name", msg.slice(0, msg.length))
+    }
+    function parseChatCommand(msg) {
+        var cmd = msg.split(" ")[0]
+        var args = msg.split(" ").slice(1)
+        var requiredArgs = findObjectByKey(chatCommands, "name", cmd).args
+        var valid
+        if(requiredArgs) {
+            var count = 0
+            if (args && args.length !== 0) {
+                for (var x = 0; x < requiredArgs.length; x++) {
+                    if (args[x] && requiredArgs[x] && args[x] !== "" && /\S/.test(args[x])) {
+                        count++
+                    }
+                }
+            }
+            valid = count === requiredArgs.length
+        } else {
+            valid = !args
+        }
+        if(valid) {
+            if(requiredArgs) {
+                var obj = {command: cmd}
+                for(var x = 0; x < requiredArgs.length; x++) {
+                    obj[requiredArgs[x]] = args[x]
+                }
+                return obj
+            } else {
+                return {command: cmd}
+            }
+        } else {
+            return null
+        }
+    }
     socket.on("gamemsg", function (msg, callback) {
         var player = getPlayerById(socket.id)
         if (player) {
@@ -310,11 +358,61 @@ io.on("connection", function (socket) {
                 var global = true
                 var filteredmsg = msg.replace(/\</g, "&lt;");
                 filteredmsg = filteredmsg.replace(/\>/g, "&gt;");
-                if (filteredmsg.slice(0, 3) === "/me") {
-                    filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
-                } else if(filteredmsg.slice(0, 7) === "/coords"){
-                    global = false
-                    filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
+                if(checkChatMsg(filteredmsg)) {
+                    var commandArgs = parseChatCommand(filteredmsg)
+                    switch(commandArgs.command) {
+                        case "/me":
+                            filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
+                            break
+                        case "/coords":
+                            global = false
+                            filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
+                            break
+                        case "/trade":
+                            global = false
+                            if(player.gold >= 100) {
+                                if (findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(players, "username", commandArgs.player).online && findObjectByKey(players, "username", commandArgs.player).id) {
+                                    /*io.to(`${findObjectByKey(players, "username", commandArgs.player).id}`).emit("alert", {
+                                        title: player.username + " wants to trade.",
+                                        html: ""
+                                    })*/
+                                    var html = "" +
+                                        "<label for=\"treasureSel\">Treasure:</label><br>" +
+                                        "<select id=\"treasureSel\">" +
+                                        "<option value='none'>None</option>"
+                                    if (player.treasure !== "none") {
+                                        for (var x = 0; x < player.treasure.length; x++) {
+                                            html += "<option value=" + player.treasure[x].name + ">" + player.treasure[x].name + " (" + player.treasure[x].rarity + ", " + numberWithCommas(player.treasure[x]) + " gold)</option>"
+                                        }
+                                    }
+                                    html += "</select>" +
+                                        "<label for='itemSel'>Item:</label><br>" +
+                                        "<select id='itemSel'>" +
+                                        "<option value='none'>None</option>"
+                                    for (var x = 0; x < player.items.length; x++) {
+                                        if (!player.items[x].flags.includes("noTrade")) {
+                                            html += "<option value=" + player.items[x].name + ">" + player.items[x].name + "</option>"
+                                        }
+                                    }
+                                    html += "</select>" +
+                                        "<label for='goldSel'>Gold:</label><br>" +
+                                        "<input id='goldSel' type='text'><br>" +
+
+                                        socket.emit("tradePopup", {
+                                            title: "Initiating trade with " + commandArgs.player,
+                                            html: html
+                                        }, commandArgs.player)
+                                } else {
+                                    socket.emit("alert", "Invalid player.")
+                                }
+                            } else {
+                                filteredmsg = "It costs 100 gold to set up a trade, and you don't have that."
+                            }
+                            break
+                        default:
+                            global = false
+                            filteredmsg = "Invalid command."
+                    }
                 } else {
                     filteredmsg = "<b>" + player.username + ":</b> " + filteredmsg;
                 }
@@ -328,6 +426,19 @@ io.on("connection", function (socket) {
                 socket.emit("chatUpdate", "Invalid command.")
                 callback()
             }*/
+        }
+    })
+    socket.on("submitTradeRequest", function(obj) {
+        var player = getPlayerById(socket.id)
+        if (player) {
+            if(obj && obj.treasure && obj.item && findObjectByKey(players, "username", obj.target)) {
+                if (player.gold >= 100) {
+                    player.gold -= 100
+                    io.to(`${findObjectByKey(players, "username", obj.target).id}`).emit("")
+                } else {
+                    socket.emit("alert", "What you tryna pull? You don't have the money!")
+                }
+            }
         }
     })
     socket.on("dig", function (px, py) {
@@ -409,7 +520,7 @@ io.on("connection", function (socket) {
                         //revealedTreasures.push({x: px, y: py})
                         player.digging = false
                         socket.emit("noTreasure")
-                        var specialEvent = (getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
+                        var specialEvent = getRandomInt(1, 30) === 1//(getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
                         if(specialEvent) {
                             eventSelector = 1 //getRandomInt(1, 5) implement later lmao
                             switch(eventSelector) {

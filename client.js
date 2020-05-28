@@ -603,6 +603,19 @@ socket.on("authenticated", function() {
             }
         }
     })
+    socket.on("tradePopup", function(content, player) {
+        Swal.fire(content).then(function(result) {
+            if(result) {
+                var obj = {
+                    treasure: $("#treasureSel").val(),
+                    item: $("#itemSel").val(),
+                    gold: $("#goldSel").val(),
+                    target: player
+                }
+                socket.emit("submitTradeRequest", obj)
+            }
+        })
+    })
 })
 var i = 0;
 function move(time) {
