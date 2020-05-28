@@ -16,6 +16,33 @@ switch(itemname) {
             socket.emit("alert", "No parameters specified.")
         }
         break
+    case "solid gold block":
+        var amount = getRandomInt(10000000, 50000000)
+        if(player.gold + amount >= Number.MAX_SAFE_INTEGER) {
+            player.gold = Number.MAX_SAFE_INTEGER
+        } else {
+            player.gold += amount
+        }
+        socket.emit("alert", "Big Money", "You auctioned your solid gold block for a sweet " + numberWithCommas(amount) + " gold!")
+        writeFB()
+        break
+    case "treasure chest":
+        if(getRandomInt(1, 4) === 1) {
+            var treasure = generateTreasure()
+            if (player.treasure === "none" || !player.treasure) {
+                player.treasure = []
+            }
+            player.treasure.push(treasure)
+            socket.emit("gotTreasure", treasure.name)
+            socket.emit("foundTreasureChat", treasure.name)
+            if (treasure.rarity === "legendary") {
+                socket.emit("chatUpdate", "<b>" + player.username + " found a legendary " + treasure.name + "!</b>")
+            }
+            writeFB()
+        } else {
+            socket.emit("alert", {title:"Better luck next time.", html: "That treasure chest had nothing in it but a whole lot of air."})
+        }
+    break
     default:
         socket.emit("alert", "Can't use that.")
         break

@@ -3,12 +3,20 @@
     {
       "name": "boat",
       "desc": "It's a basic boat to let you cross water.",
-      "flags": ["noUse"]
+      "flags": ["noUse", "noTrade"]
     },
     {
       "name": "teleporter module",
       "desc": "Teleports you anywhere on the map once.",
       "params": ["x", "y"]
+    },
+    {
+      "name": "solid gold block",
+      "desc": "It's insanely heavy and valuable. Don't lose it."
+    },
+    {
+      "name": "treasure chest",
+      "desc": "Contains some treasure. Probably."
     }
   ]
 }

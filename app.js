@@ -14,7 +14,7 @@ firebase.initializeApp({
 var db = firebase.database();
 var FirebaseData = db.ref("data");
 var appdata = {};
-
+var validItems = JSON.parse(fs.readFileSync("validitems.json", "utf8")).items
 const socketioAuth = require("socketio-auth");
 
 var transporter = nodemailer.createTransport({
@@ -77,7 +77,7 @@ async function setup() {
         for(var x = 0; x < players.length; x++) {
             players[x].online = false
         }
-        writeFB()
+        //writeFB()
     }
 }
 
@@ -114,15 +114,12 @@ async function response(req, res) {
                     gold: 100,
                     username: obj.username,
                     password: obj.password,
-                    items: [{
-                        "desc": "It's a basic boat to let you cross water.",
-                        "flags": ["noUse", "noTrade"],
-                        "name": "boat"
-                    }],
+                    items: [],
                     treasure: "none",
                     online: false,
                     digTime: 10000
                 }
+                addItem(player, "boat")
                 players.push(player)
                 /*var mailOptions = {
                     from: 'dra032005@gmail.com',
@@ -216,11 +213,13 @@ function simplifyPlayer(playerobj) {
 function disconnect(socket) {
     console.log("disconnected (auth)")
     //var player = findObjectByKey(players, "id", socket.id)
+
     var player = getPlayerById(socket.id)
     if (player) {
         player.online = false
         writeFB()
     }
+
     //ids.splice(ids.indexOf(socket.id), 1)
 }
 
@@ -241,12 +240,14 @@ socketioAuth(io, {
 io.on("connection", function (socket) {
 
     socket.on("disconnect", function () {
+
         console.log("disconnected")
         var player = getPlayerById(socket.id)
         if (player) {
             player.online = false
             writeFB()
         }
+
     })
     socket.on("getInfoOnLogin", function (u, p) {
         if (findObjectByKey(players, "username", u) && findObjectByKey(players, "username", u).password === p) {
@@ -457,53 +458,7 @@ io.on("connection", function (socket) {
                 setTimeout(function () {
                     if (/*(inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && */((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(6) === "3" && parseInt(((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(8)) % 2 === 0 && player.digging) {
                         revealedTreasures.push({x: px, y: py})
-                        var select = Math.random() * 100
-                        var treasure = {}
-                        if (select > 99.99) {
-                            treasure.rarity = "legendary"
-                            treasure.value = getRandomInt(10000000, 30000000)
-                            var type = getRandomInt(1, 4)
-                            switch (type) {
-                                case 1:
-                                    type = "Idol"
-                                    break
-                                case 2:
-                                    type = "Sword"
-                                    break
-                                case 3:
-                                    type = "Totem"
-                                    break
-                                default:
-                                    break
-                            }
-                            treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
-                        } else if (select > 99.9) {
-                            treasure.rarity = "extremely rare"
-                            treasure.value = getRandomInt(5000000, 10000000)
-                            treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
-                        } else if (select > 90) {
-                            treasure.rarity = "rare"
-                            treasure.value = getRandomInt(1000000, 3000000)
-                            treasure.name = sentencer.make("{{adjective}} {{noun}}")
-                        } else {
-                            treasure.rarity = "common"
-                            treasure.value = getRandomInt(1000, 30000)
-                            var type = getRandomInt(1, 4)
-                            switch (type) {
-                                case 1:
-                                    type = "rusty"
-                                    break
-                                case 2:
-                                    type = "beat-up"
-                                    break
-                                case 3:
-                                    type = "neglected"
-                                    break
-                                default:
-                                    break
-                            }
-                            treasure.name = sentencer.make(type + " {{noun}}")
-                        }
+                        var treasure = generateTreasure()
                         if (player.treasure === "none" || !player.treasure) {
                             player.treasure = []
                         }
@@ -520,31 +475,27 @@ io.on("connection", function (socket) {
                         //revealedTreasures.push({x: px, y: py})
                         player.digging = false
                         socket.emit("noTreasure")
-                        var specialEvent = getRandomInt(1, 30) === 1//(getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
-                        if(specialEvent) {
-                            eventSelector = 1 //getRandomInt(1, 5) implement later lmao
-                            switch(eventSelector) {
-                                case 1:
-                                    specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
-                                    player.items.push({
-                                        "name": "teleporter module",
-                                        "desc": "Teleports you anywhere on the map once.",
-                                        "params": ["x", "y"]
-                                    })
-                                    socket.emit("getItems", player.items, player.gold)
-                                    writeFB()
-                                    break
-                                case 2:
-                                    break
-                                case 3:
-                                    break
-                                case 4:
-                                    break
-                                default:
-                                    break
-                            }
-                            socket.emit("alert", {title: "Something happened!", html: specialEvent})
+                        var specialEvent = getRandomInt(0, 1000)//(getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
+                        if(specialEvent < 5) {
+                            specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a solid gold block!"
+                            addItem(player, "solid gold block")
+
+                        } else if(specialEvent < 10) {
+                            var amount = getRandomInt(1000000, 5000000)
+                            specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a pile of " + numberWithCommas(amount) + " gold coins!"
+                            player.gold += amount
+
+                        } else if(specialEvent < 50) {
+                            specialEvent = "You hear a 'thunk' and stop digging. Turns out you've unearthed a treasure chest!"
+                            addItem(player, "treasure chest")
+                        } else if(specialEvent < 80) {
+                            specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
+                            addItem(player, "teleporter module")
+
                         }
+                        writeFB()
+                        socket.emit("getItems", player.items, player.gold)
+                        socket.emit("alert", {title: "Something happened!", html: specialEvent})
                     }
                 }, player.digTime)
             }
@@ -657,7 +608,13 @@ io.on("connection", function (socket) {
     })
 
 })
-
+function addItem(player, name) {
+    if(!player.items || player.items.length === 0) {
+        player.items = []
+    }
+    player.items.push(findObjectByKey(validItems, "name", name))
+    writeFB()
+}
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
@@ -819,4 +776,54 @@ function generateFrame(px, py) {
 
     }
     return {main: currentMap, mini: minimap}
+}
+function generateTreasure() {
+    var select = Math.random() * 100
+    var treasure = {}
+    if (select > 99.99) {
+        treasure.rarity = "legendary"
+        treasure.value = getRandomInt(10000000, 30000000)
+        var type = getRandomInt(1, 4)
+        switch (type) {
+            case 1:
+                type = "Idol"
+                break
+            case 2:
+                type = "Sword"
+                break
+            case 3:
+                type = "Totem"
+                break
+            default:
+                break
+        }
+        treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + type + " of " + capWord(sentencer.make("{{noun}}"))
+    } else if (select > 99.9) {
+        treasure.rarity = "extremely rare"
+        treasure.value = getRandomInt(5000000, 10000000)
+        treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
+    } else if (select > 90) {
+        treasure.rarity = "rare"
+        treasure.value = getRandomInt(1000000, 3000000)
+        treasure.name = sentencer.make("{{adjective}} {{noun}}")
+    } else {
+        treasure.rarity = "common"
+        treasure.value = getRandomInt(1000, 30000)
+        var type = getRandomInt(1, 4)
+        switch (type) {
+            case 1:
+                type = "rusty"
+                break
+            case 2:
+                type = "beat-up"
+                break
+            case 3:
+                type = "neglected"
+                break
+            default:
+                break
+        }
+        treasure.name = sentencer.make(type + " {{noun}}")
+    }
+    return treasure
 }
