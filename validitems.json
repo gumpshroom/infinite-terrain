@@ -12,11 +12,13 @@
     },
     {
       "name": "solid gold block",
-      "desc": "It's insanely heavy and valuable. Don't lose it."
+      "desc": "It's insanely heavy and valuable. Don't lose it.",
+      "params": []
     },
     {
       "name": "treasure chest",
-      "desc": "Contains some treasure. Probably."
+      "desc": "Contains some treasure. Probably.",
+      "params": []
     }
   ]
 }
