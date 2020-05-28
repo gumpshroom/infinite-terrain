@@ -554,7 +554,12 @@ socket.on("authenticated", function() {
                     var sellButton = document.createElement("button")
                     sellButton.innerHTML = "Use"
                     //params is an array
-                    sellButton.setAttribute("onclick", "useItem('" + items[x].name + "', ['" + items[x].params.join("', '") + "'])")
+                    if(items[x].params) {
+                        sellButton.setAttribute("onclick", "useItem('" + items[x].name + "', ['" + items[x].params.join("', '") + "'])")
+                    } else {
+                        sellButton.setAttribute("onclick", "useItem('" + items[x].name + "')")
+                    }
+
                     DOMitem.appendChild(sellButton)
                 }
                 itemContainer.appendChild(DOMitem)

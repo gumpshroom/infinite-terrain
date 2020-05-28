@@ -491,11 +491,14 @@ io.on("connection", function (socket) {
                         } else if(specialEvent < 80) {
                             specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
                             addItem(player, "teleporter module")
-
+                        } else {
+                            specialEvent = null
                         }
-                        writeFB()
-                        socket.emit("getItems", player.items, player.gold)
-                        socket.emit("alert", {title: "Something happened!", html: specialEvent})
+                        if(specialEvent) {
+                            writeFB()
+                            socket.emit("getItems", player.items, player.gold)
+                            socket.emit("alert", {title: "Something happened!", html: specialEvent})
+                        }
                     }
                 }, player.digTime)
             }
