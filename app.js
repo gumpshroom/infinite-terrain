@@ -1,7 +1,9 @@
-var app = require('http').createServer(response); //http server module
-var fs = require('fs'); //filesystem module
-var io = require('socket.io')(app); //socket.io module
-var sentencer = require('sentencer') //suggest topics
+var app = require('http').createServer(response);
+var fs = require('fs');
+var io = require('socket.io')(app)
+var crypto = require('crypto');
+var CryptoJS = require('crypto-js')
+var sentencer = require('sentencer')
 const qs = require('querystring');
 var firebase = require('firebase-admin');
 var nodemailer = require('nodemailer');
@@ -16,7 +18,7 @@ var FirebaseData = db.ref("data");
 var appdata = {};
 var validItems = JSON.parse(fs.readFileSync("validitems.json", "utf8")).items
 const socketioAuth = require("socketio-auth");
-
+const AES = require('crypto-js/aes')
 var transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -32,6 +34,7 @@ var transporter = nodemailer.createTransport({
 var ids = [] //list of socket ids
 var players = [] //list of connected sockets
 var revealedTreasures = [] //list of unearthed treasure
+var redeemedCodes = []
 var Perlin = require('perlin.js');
 const dirt = '#6b4433',
     grass = '#377d1b',
@@ -61,7 +64,8 @@ function readFB() {
 function writeFB() {
     FirebaseData.set({
         players: players,
-        treasure: revealedTreasures
+        treasure: revealedTreasures,
+        redeemedCodes: redeemedCodes
     });
 }
 
@@ -72,9 +76,10 @@ async function setup() {
             appdata = copyObject(snapshot.val());
             players = appdata.players;
             revealedTreasures = appdata.treasure
+            redeemedCodes = appdata.redeemedCodes
         });
         app.listen(process.env.PORT || 3000);
-        for(var x = 0; x < players.length; x++) {
+        for (var x = 0; x < players.length; x++) {
             players[x].online = false
         }
         //writeFB()
@@ -87,7 +92,7 @@ async function response(req, res) {
     /*
     This function handles incoming HTTP requests and returns data
      */
-    var file = "";
+    var file;
     if (req.url === "/") {
         file = __dirname + "/index.html"
     } else if (req.url === "/app.js" || req.url === "/lootmastersauth.json" || req.url === "/itemhandler.js") {
@@ -315,16 +320,29 @@ io.on("connection", function (socket) {
     }, {
         name: "/trade",
         args: ["player"]
+    }, {
+        name: "/redeem",
+        args: ["code"]
     }]
+
     function checkChatMsg(msg) {
-        return findObjectByKey(chatCommands, "name", msg.slice(0, msg.length))
+        for (var x = 0; x < chatCommands.length; x++) {
+            if (msg.slice(0, chatCommands[x].name.length) === chatCommands[x].name) {
+                return true
+            }
+        }
+        return false
     }
+
     function parseChatCommand(msg) {
         var cmd = msg.split(" ")[0]
+        console.log("command: " + cmd)
         var args = msg.split(" ").slice(1)
+        console.log("args: " + args)
         var requiredArgs = findObjectByKey(chatCommands, "name", cmd).args
+        console.log("required: " + requiredArgs)
         var valid
-        if(requiredArgs) {
+        if (requiredArgs) {
             var count = 0
             if (args && args.length !== 0) {
                 for (var x = 0; x < requiredArgs.length; x++) {
@@ -332,15 +350,17 @@ io.on("connection", function (socket) {
                         count++
                     }
                 }
+                valid = count === requiredArgs.length
+            } else {
+                valid = false
             }
-            valid = count === requiredArgs.length
         } else {
             valid = !args
         }
-        if(valid) {
-            if(requiredArgs) {
+        if (valid) {
+            if (requiredArgs) {
                 var obj = {command: cmd}
-                for(var x = 0; x < requiredArgs.length; x++) {
+                for (var x = 0; x < requiredArgs.length; x++) {
                     obj[requiredArgs[x]] = args[x]
                 }
                 return obj
@@ -351,6 +371,7 @@ io.on("connection", function (socket) {
             return null
         }
     }
+
     socket.on("gamemsg", function (msg, callback) {
         var player = getPlayerById(socket.id)
         if (player) {
@@ -359,65 +380,101 @@ io.on("connection", function (socket) {
                 var global = true
                 var filteredmsg = msg.replace(/\</g, "&lt;");
                 filteredmsg = filteredmsg.replace(/\>/g, "&gt;");
-                if(checkChatMsg(filteredmsg)) {
+                if (checkChatMsg(filteredmsg)) {
                     var commandArgs = parseChatCommand(filteredmsg)
-                    switch(commandArgs.command) {
-                        case "/me":
-                            filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
-                            break
-                        case "/coords":
-                            global = false
-                            filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
-                            break
-                        case "/trade":
-                            global = false
-                            if(player.gold >= 100) {
-                                if (findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(players, "username", commandArgs.player).online && findObjectByKey(players, "username", commandArgs.player).id) {
-                                    /*io.to(`${findObjectByKey(players, "username", commandArgs.player).id}`).emit("alert", {
-                                        title: player.username + " wants to trade.",
-                                        html: ""
-                                    })*/
-                                    var html = "" +
-                                        "<label for=\"treasureSel\">Treasure:</label><br>" +
-                                        "<select id=\"treasureSel\">" +
-                                        "<option value='none'>None</option>"
-                                    if (player.treasure !== "none") {
-                                        for (var x = 0; x < player.treasure.length; x++) {
-                                            html += "<option value=" + player.treasure[x].name + ">" + player.treasure[x].name + " (" + player.treasure[x].rarity + ", " + numberWithCommas(player.treasure[x]) + " gold)</option>"
+                    if (commandArgs) {
+                        console.log(commandArgs)
+                        switch (commandArgs.command) {
+                            case "/me":
+                                filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
+                                break
+                            case "/coords":
+                                global = false
+                                filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
+                                break
+                            case "/trade":
+                                global = false
+                                if (player.gold >= 100) {
+                                    if (findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(players, "username", commandArgs.player).online && findObjectByKey(players, "username", commandArgs.player).id) {
+                                        /*io.to(`${findObjectByKey(players, "username", commandArgs.player).id}`).emit("alert", {
+                                            title: player.username + " wants to trade.",
+                                            html: ""
+                                        })*/
+                                        var html = "" +
+                                            "<label for=\"treasureSel\">Treasure:</label><br>" +
+                                            "<select id=\"treasureSel\">" +
+                                            "<option value='none'>None</option>"
+                                        if (player.treasure !== "none") {
+                                            for (var x = 0; x < player.treasure.length; x++) {
+                                                html += "<option value=" + player.treasure[x].name + ">" + player.treasure[x].name + " (" + player.treasure[x].rarity + ", " + numberWithCommas(player.treasure[x]) + " gold)</option>"
+                                            }
                                         }
-                                    }
-                                    html += "</select>" +
-                                        "<label for='itemSel'>Item:</label><br>" +
-                                        "<select id='itemSel'>" +
-                                        "<option value='none'>None</option>"
-                                    for (var x = 0; x < player.items.length; x++) {
-                                        if (!player.items[x].flags.includes("noTrade")) {
-                                            html += "<option value=" + player.items[x].name + ">" + player.items[x].name + "</option>"
+                                        html += "</select>" +
+                                            "<label for='itemSel'>Item:</label><br>" +
+                                            "<select id='itemSel'>" +
+                                            "<option value='none'>None</option>"
+                                        for (var x = 0; x < player.items.length; x++) {
+                                            if (!player.items[x].flags.includes("noTrade")) {
+                                                html += "<option value=" + player.items[x].name + ">" + player.items[x].name + "</option>"
+                                            }
                                         }
-                                    }
-                                    html += "</select>" +
-                                        "<label for='goldSel'>Gold:</label><br>" +
-                                        "<input id='goldSel' type='text'><br>" +
+                                        html += "</select>" +
+                                            "<label for='goldSel'>Gold:</label><br>" +
+                                            "<input id='goldSel' type='text'><br>" +
 
-                                        socket.emit("tradePopup", {
-                                            title: "Initiating trade with " + commandArgs.player,
-                                            html: html
-                                        }, commandArgs.player)
+                                            socket.emit("tradePopup", {
+                                                title: "Initiating trade with " + commandArgs.player,
+                                                html: html
+                                            }, commandArgs.player)
+                                    } else {
+                                        socket.emit("alert", "Invalid player.")
+                                    }
                                 } else {
-                                    socket.emit("alert", "Invalid player.")
+                                    filteredmsg = "It costs 100 gold to set up a trade, and you don't have that."
                                 }
-                            } else {
-                                filteredmsg = "It costs 100 gold to set up a trade, and you don't have that."
+                                break
+                            case "/redeem":
+                                global = false
+
+                            function hex_to_ascii(str1) {
+                                var hex = str1.toString();
+                                var str = '';
+                                for (var n = 0; n < hex.length; n += 2) {
+                                    str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
+                                }
+                                return str;
                             }
-                            break
-                        default:
-                            global = false
-                            filteredmsg = "Invalid command."
+
+                                var decrypted = hex_to_ascii(AES.decrypt(commandArgs.code, "plogsandquaggy62").toString())
+                                console.log(decrypted)
+                                if (decrypted.charAt(3) === "3" && eval(decrypted.split("").join("+")) < 15 && !redeemedCodes.includes(commandArgs.code)) {
+                                    if (redeemedCodes === "none")
+                                        redeemedCodes = []
+                                    redeemedCodes.push(commandArgs.code)
+                                    if (eval(decrypted.split("").join("+")) < 7) {
+                                        filteredmsg = "Holy cow, your code was a winner! You've received a solid gold block!"
+                                        addItem(player, "solid gold block")
+                                    } else {
+                                        filteredmsg = "You redeemed your coupon code for a treasure chest!"
+                                        addItem(player, "treasure chest")
+                                    }
+                                    writeFB()
+                                } else {
+                                    filteredmsg = "Invalid code."
+                                }
+                                break
+                            default:
+                                global = false
+                                filteredmsg = "Invalid command."
+                        }
+                    } else {
+                        global = false
+                        filteredmsg = "Invalid command."
                     }
                 } else {
                     filteredmsg = "<b>" + player.username + ":</b> " + filteredmsg;
                 }
-                if(global) {
+                if (global) {
                     io.sockets.emit("chatUpdate", filteredmsg)
                 } else {
                     socket.emit("chatUpdate", filteredmsg)
@@ -429,10 +486,10 @@ io.on("connection", function (socket) {
             }*/
         }
     })
-    socket.on("submitTradeRequest", function(obj) {
+    socket.on("submitTradeRequest", function (obj) {
         var player = getPlayerById(socket.id)
         if (player) {
-            if(obj && obj.treasure && obj.item && findObjectByKey(players, "username", obj.target)) {
+            if (obj && obj.treasure && obj.item && findObjectByKey(players, "username", obj.target)) {
                 if (player.gold >= 100) {
                     player.gold -= 100
                     io.to(`${findObjectByKey(players, "username", obj.target).id}`).emit("")
@@ -451,7 +508,7 @@ io.on("connection", function (socket) {
 
             if (inRangeExc(noise, 0, 40) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y === py)) {
                 socket.emit("chatUpdate", "Can't dig there.")
-            } else if(!player.digging) {
+            } else if (!player.digging) {
                 player.digging = true
                 socket.emit("chatUpdate", "Digging (" + numberWithCommas(player.digTime) + " ms)...")
                 //socket.emit("chatUpdate", "<div id='myProgress'><div id='myBar'></div></div><script>move(" + player.digTime + ")</script>")
@@ -476,25 +533,25 @@ io.on("connection", function (socket) {
                         player.digging = false
                         socket.emit("noTreasure")
                         var specialEvent = getRandomInt(0, 1000)//(getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
-                        if(specialEvent < 5) {
+                        if (specialEvent < 5) {
                             specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a solid gold block!"
                             addItem(player, "solid gold block")
 
-                        } else if(specialEvent < 10) {
+                        } else if (specialEvent < 10) {
                             var amount = getRandomInt(1000000, 5000000)
                             specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a pile of " + numberWithCommas(amount) + " gold coins!"
                             player.gold += amount
 
-                        } else if(specialEvent < 50) {
+                        } else if (specialEvent < 50) {
                             specialEvent = "You hear a 'thunk' and stop digging. Turns out you've unearthed a treasure chest!"
                             addItem(player, "treasure chest")
-                        } else if(specialEvent < 80) {
+                        } else if (specialEvent < 80) {
                             specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
                             addItem(player, "teleporter module")
                         } else {
                             specialEvent = null
                         }
-                        if(specialEvent) {
+                        if (specialEvent) {
                             writeFB()
                             socket.emit("getItems", player.items, player.gold)
                             socket.emit("alert", {title: "Something happened!", html: specialEvent})
@@ -517,21 +574,21 @@ io.on("connection", function (socket) {
             socket.emit("diggingLock", player.x, player.y)
         }
     })
-    socket.on("updateDir", function(directions) {
+    socket.on("updateDir", function (directions) {
         var player = getPlayerById(socket.id)
         if (player && !player.digging && player.x < Number.MAX_SAFE_INTEGER && player.x > -Number.MAX_SAFE_INTEGER && player.y < Number.MAX_SAFE_INTEGER && player.y > -Number.MAX_SAFE_INTEGER) {
             //console.log("updated " + socket.id)
-            if(directions.includes("left")) {
-                player.x --
+            if (directions.includes("left")) {
+                player.x--
             }
-            if(directions.includes("right")) {
-                player.x ++
+            if (directions.includes("right")) {
+                player.x++
             }
-            if(directions.includes("up")) {
-                player.y --
+            if (directions.includes("up")) {
+                player.y--
             }
-            if(directions.includes("down")) {
-                player.y ++
+            if (directions.includes("down")) {
+                player.y++
             }
             writeFB()
             io.sockets.emit("requestNewPlayerPos")
@@ -571,12 +628,17 @@ io.on("connection", function (socket) {
 
             //console.log(px, py)
             var mainresult = generateFrame(px, py)
-            if(!direction) {
+            if (!direction) {
                 var leftresult = generateFrame(px - 128, py)
                 var rightresult = generateFrame(px + 128, py)
                 var topresult = generateFrame(px, py - 96)
                 var bottomresult = generateFrame(px, py + 96)
-                socket.emit("loadMap", mainresult.main, {left: leftresult.main, right: rightresult.main, top: topresult.main, bottom: bottomresult.main}, mainresult.mini)
+                socket.emit("loadMap", mainresult.main, {
+                    left: leftresult.main,
+                    right: rightresult.main,
+                    top: topresult.main,
+                    bottom: bottomresult.main
+                }, mainresult.mini)
             } else {
                 socket.emit("loadMap", mainresult.main, direction, mainresult.mini)
             }
@@ -611,13 +673,18 @@ io.on("connection", function (socket) {
     })
 
 })
+
 function addItem(player, name) {
-    if(!player.items || player.items.length === 0) {
+    if (!player.items || player.items.length === 0) {
         player.items = []
     }
     player.items.push(findObjectByKey(validItems, "name", name))
+    if (player.id) {
+        io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+    }
     writeFB()
 }
+
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
@@ -642,6 +709,7 @@ function getNoise(x, y) {
     //return Math.abs(simplex.noise2D(x, y)) * 100
     //return Math.floor(grid.getPixel(x / scalefactor, y / scalefactor) * 100)
 }
+
 function getMinimapNoise(x, y) {
     return Math.abs(Perlin.simplex2(x / 20, y / 20) * 100)
 }
@@ -688,6 +756,7 @@ function numberWithCommas(nStr) {
     }
     return x1 + x2;
 }
+
 function generateFrame(px, py) {
     var leftbound = px - 65
     var rightbound = px + 65
@@ -780,6 +849,7 @@ function generateFrame(px, py) {
     }
     return {main: currentMap, mini: minimap}
 }
+
 function generateTreasure() {
     var select = Math.random() * 100
     var treasure = {}
