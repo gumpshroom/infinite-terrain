@@ -78,10 +78,28 @@ async function setup() {
             revealedTreasures = appdata.treasure
             redeemedCodes = appdata.redeemedCodes
         });
-        app.listen(process.env.PORT || 3000);
-        for (var x = 0; x < players.length; x++) {
-            players[x].online = false
-        }
+
+        setTimeout(function() {
+            console.log("ready!")
+            app.listen(process.env.PORT || 3000);
+            for (var x = 0; x < players.length; x++) {
+                var player = players[x]
+                player.online = false
+                player.digging = false
+                if(player.trade) {
+                    player.gold += player.trade.gold
+                    if(player.trade.item)
+                        addItem(player, player.trade.item)
+                    if(!player.treasure || player.treasure === "none")
+                        player.treasure = []
+                    if(player.trade.treasure !== "none")
+                        player.treasure.push(player.trade.treasure)
+                    player.trade = null
+                }
+            }
+            writeFB()
+        }, 3000)
+
         //writeFB()
     }
 }
@@ -336,11 +354,11 @@ io.on("connection", function (socket) {
 
     function parseChatCommand(msg) {
         var cmd = msg.split(" ")[0]
-        console.log("command: " + cmd)
+        //console.log("command: " + cmd)
         var args = msg.split(" ").slice(1)
-        console.log("args: " + args)
+        //console.log("args: " + args)
         var requiredArgs = findObjectByKey(chatCommands, "name", cmd).args
-        console.log("required: " + requiredArgs)
+        //console.log("required: " + requiredArgs)
         var valid
         if (requiredArgs) {
             var count = 0
@@ -383,7 +401,7 @@ io.on("connection", function (socket) {
                 if (checkChatMsg(filteredmsg)) {
                     var commandArgs = parseChatCommand(filteredmsg)
                     if (commandArgs) {
-                        console.log(commandArgs)
+                        //console.log(commandArgs)
                         switch (commandArgs.command) {
                             case "/me":
                                 filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
@@ -394,60 +412,60 @@ io.on("connection", function (socket) {
                                 break
                             case "/trade":
                                 global = false
-                                if (player.gold >= 100) {
-                                    if (findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(players, "username", commandArgs.player).online && findObjectByKey(players, "username", commandArgs.player).id) {
-                                        /*io.to(`${findObjectByKey(players, "username", commandArgs.player).id}`).emit("alert", {
-                                            title: player.username + " wants to trade.",
-                                            html: ""
-                                        })*/
-                                        var html = "" +
-                                            "<label for=\"treasureSel\">Treasure:</label><br>" +
-                                            "<select id=\"treasureSel\">" +
-                                            "<option value='none'>None</option>"
-                                        if (player.treasure !== "none") {
-                                            for (var x = 0; x < player.treasure.length; x++) {
-                                                html += "<option value=" + player.treasure[x].name + ">" + player.treasure[x].name + " (" + player.treasure[x].rarity + ", " + numberWithCommas(player.treasure[x]) + " gold)</option>"
+                                if (!player.trade) {
+                                    if (player.gold >= 100) {
+                                        if (findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(players, "username", commandArgs.player).username !== player.username && findObjectByKey(players, "username", commandArgs.player).online && findObjectByKey(players, "username", commandArgs.player).id) {
+                                            /*io.to(`${findObjectByKey(players, "username", commandArgs.player).id}`).emit("alert", {
+                                                title: player.username + " wants to trade.",
+                                                html: ""
+                                            })*/
+                                            var html = "" +
+                                                "<label for=\"treasureSel\">Treasure:</label><br>" +
+                                                "<select id=\"treasureSel\">" +
+                                                "<option value='none'>None</option>"
+                                            if (player.treasure !== "none" && player.treasure) {
+                                                for (var x = 0; x < player.treasure.length; x++) {
+                                                    html += "<option value='" + player.treasure[x].name + "'>" + player.treasure[x].name + " (" + player.treasure[x].rarity + ", " + numberWithCommas(player.treasure[x].value) + " gold)</option>"
+                                                }
                                             }
-                                        }
-                                        html += "</select>" +
-                                            "<label for='itemSel'>Item:</label><br>" +
-                                            "<select id='itemSel'>" +
-                                            "<option value='none'>None</option>"
-                                        for (var x = 0; x < player.items.length; x++) {
-                                            if (!player.items[x].flags.includes("noTrade")) {
-                                                html += "<option value=" + player.items[x].name + ">" + player.items[x].name + "</option>"
+                                            html += "</select><br>" +
+                                                "<label for='itemSel'>Item:</label><br>" +
+                                                "<select id='itemSel'>" +
+                                                "<option value='none'>None</option>"
+                                            if(player.items) {
+                                                for (var x = 0; x < player.items.length; x++) {
+                                                    if (!player.items[x].flags || !player.items[x].flags.includes("noTrade")) {
+                                                        html += "<option value='" + player.items[x].name + "'>" + player.items[x].name + "</option>"
+                                                    }
+                                                }
                                             }
-                                        }
-                                        html += "</select>" +
-                                            "<label for='goldSel'>Gold:</label><br>" +
-                                            "<input id='goldSel' type='text'><br>" +
+                                            html += "</select><br>" +
+                                                "<label for='goldSel'>Gold:</label><br>" +
+                                                "<input id='goldSel' type='text'><br>"
 
                                             socket.emit("tradePopup", {
                                                 title: "Initiating trade with " + commandArgs.player,
-                                                html: html
+                                                html: html,
+                                                showCancelButton: true
                                             }, commandArgs.player)
+
+                                            writeFB()
+                                        } else {
+                                            socket.emit("alert", "Invalid player, or the player is already in a trade.")
+                                        }
                                     } else {
-                                        socket.emit("alert", "Invalid player.")
+                                        filteredmsg = "It costs 100 gold to set up a trade, and you don't have that."
                                     }
                                 } else {
-                                    filteredmsg = "It costs 100 gold to set up a trade, and you don't have that."
+                                    filteredmsg = "You have a trade request open already."
                                 }
                                 break
                             case "/redeem":
                                 global = false
 
-                            function hex_to_ascii(str1) {
-                                var hex = str1.toString();
-                                var str = '';
-                                for (var n = 0; n < hex.length; n += 2) {
-                                    str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
-                                }
-                                return str;
-                            }
-
                                 var decrypted = hex_to_ascii(AES.decrypt(commandArgs.code, "plogsandquaggy62").toString())
                                 console.log(decrypted)
-                                if (decrypted.charAt(3) === "3" && eval(decrypted.split("").join("+")) < 15 && !redeemedCodes.includes(commandArgs.code)) {
+                                if (decrypted.charAt(2) === "3" && eval(decrypted.split("").join("+")) < 15 && !redeemedCodes.includes(commandArgs.code)) {
                                     if (redeemedCodes === "none")
                                         redeemedCodes = []
                                     redeemedCodes.push(commandArgs.code)
@@ -489,12 +507,230 @@ io.on("connection", function (socket) {
     socket.on("submitTradeRequest", function (obj) {
         var player = getPlayerById(socket.id)
         if (player) {
-            if (obj && obj.treasure && obj.item && findObjectByKey(players, "username", obj.target)) {
+            console.log("stage 1", obj)
+            if (obj && ((obj.treasure !== "none" && findObjectByKey(player.treasure, "name", obj.treasure)) || (obj.item !== "none" && findObjectByKey(player.items, "name", obj.item)) || (/\d*/.test(obj.gold) && player.gold - 100 >= parseInt(obj.gold))) && findObjectByKey(players, "username", obj.target) && obj.target !== player.username) {
                 if (player.gold >= 100) {
                     player.gold -= 100
-                    io.to(`${findObjectByKey(players, "username", obj.target).id}`).emit("")
+                    player.trade = {
+                        with: obj.target,
+                        item: obj.item,
+                        treasure: "none"
+                    }
+                    if(obj.treasure !== "none") {
+                        player.trade.treasure = findObjectByKey(player.treasure, "name", obj.treasure)
+                    }
+                    if(/\d*/.test(obj.gold) && player.gold - 100 >= parseInt(obj.gold)) {
+                        player.trade.gold = parseInt(obj.gold)
+                    } else {
+                        player.trade.gold = 0
+                    }
+                    player.gold -= player.trade.gold
+                    if(player.trade.treasure !== "none")
+                        player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", player.trade.treasure)), 1)
+                    if(player.trade.item !== "none")
+                        removeItem(player, player.trade.item)
+                    var targetPlayer = findObjectByKey(players, "username", obj.target)
+                    var html = "<b>" + player.username + "</b> has offered: <br>"
+                    if(player.trade.treasure !== "none") {
+                        html += "Treasure: " + player.trade.treasure.name + " (" + player.trade.treasure.rarity + ", " + numberWithCommas(player.trade.treasure.value) + " gold)<br>"
+                    } else {
+                        html += "Treasure: none<br>"
+                    }
+                    html += "Item: " + player.trade.item + "<br>" +
+                        "Gold: " + numberWithCommas(player.trade.gold) + "<br>" +
+                        "<br><b>Add items to your offer:</b><br>" +
+                        "<label for=\"treasureSel\">Treasure:</label><br>" +
+                        "<select id=\"treasureSel\">" +
+                        "<option value='none'>None</option>"
+                    if (targetPlayer.treasure !== "none" && targetPlayer.treasure) {
+                        for (var x = 0; x < targetPlayer.treasure.length; x++) {
+                            html += "<option value='" + targetPlayer.treasure[x].name + "'>" + targetPlayer.treasure[x].name + " (" + targetPlayer.treasure[x].rarity + ", " + numberWithCommas(targetPlayer.treasure[x].value) + " gold)</option>"
+                        }
+                    }
+                    html += "</select><br>" +
+                        "<label for='itemSel'>Item:</label><br>" +
+                        "<select id='itemSel'>" +
+                        "<option value='none'>None</option>"
+                    if(targetPlayer.items) {
+                        for (var i = 0; i < targetPlayer.items.length; i++) {
+                            if (!targetPlayer.items[i].flags || !targetPlayer.items[i].flags.includes("noTrade")) {
+                                html += "<option value='" + targetPlayer.items[i].name + "'>" + targetPlayer.items[i].name + "</option>"
+                            }
+                        }
+                    }
+                    html += "</select><br>" +
+                        "<label for='goldSel'>Gold:</label><br>" +
+                        "<input id='goldSel' type='text'><br>"
+                    io.to(`${targetPlayer.id}`).emit("onTradeRequest", {
+                        title: player.username + " wants to trade!",
+                        html: html,
+                        showCancelButton: true
+                    }, player.username)
+                    setTimeout(function () {
+                        if (player.trade) {
+                            player.gold += player.trade.gold
+                            if(player.trade.item)
+                                addItem(player, player.trade.item)
+                            if(!player.treasure || player.treasure === "none")
+                                player.treasure = []
+                            if(player.trade.treasure !== "none")
+                                player.treasure.push(player.trade.treasure)
+                            player.trade = null
+                            io.to(`${player.id}`).emit("alert", "Trade timed out.")
+                        }
+                        if (targetPlayer.trade) {
+                            targetPlayer.gold += targetPlayer.trade.gold
+                            if(targetplayer.trade.item)
+                                addItem(targetPlayer, targetPlayer.trade.item)
+                            if(!targetPlayer.treasure || targetPlayer.treasure === "none")
+                                targetPlayer.treasure = []
+                            if(targetPlayer.trade.treasure !== "none")
+                                targetPlayer.treasure.push(targetPlayer.trade.treasure)
+                            targetPlayer.trade = null
+                            io.to(`${targetPlayer.id}`).emit("alert", "Trade timed out.")
+                        }
+                        writeFB()
+                    }, 300000)
+                    writeFB()
                 } else {
                     socket.emit("alert", "What you tryna pull? You don't have the money!")
+                }
+            } else {
+                socket.emit("alert", "Bad input.")
+            }
+        }
+    })
+    socket.on("confirmAddToTrade", function(obj) {
+        var player = getPlayerById(socket.id)
+        if (player) {
+            console.log("stage 2", obj)
+            if(obj && obj.target && findObjectByKey(players, "username", obj.target) && obj.target !== player.username) {
+                var initiator = findObjectByKey(players, "username", obj.target)
+                if(initiator.trade && !player.trade) {
+                    if (obj.accept && ((obj.treasure !== "none" && findObjectByKey(player.treasure, "name", obj.treasure)) || (obj.item !== "none" && findObjectByKey(player.items, "name", obj.item)) || (/\d*/.test(obj.gold) && player.gold >= parseInt(obj.gold)))) {
+                        player.trade = {
+                            with: initiator.username,
+                            item: obj.item,
+                            treasure: "none"
+                        }
+                        if(obj.treasure !== "none") {
+                            player.trade.treasure = findObjectByKey(player.treasure, "name", obj.treasure)
+                        }
+                        if(/\d*/.test(obj.gold) && player.gold >= parseInt(obj.gold)) {
+                            player.trade.gold = parseInt(obj.gold)
+                        } else {
+                            player.trade.gold = 0
+                        }
+                        player.gold -= player.trade.gold
+                        if(player.trade.treasure !== "none")
+                            player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", player.trade.treasure)), 1)
+                        if(player.trade.item !== "none")
+                            removeItem(player, player.trade.item)
+                        var html = "<b>" + player.username + "</b> has offered: <br>"
+                        if(player.trade.treasure !== "none") {
+                            html += "Treasure: " + player.trade.treasure.name + " (" + player.trade.treasure.rarity + ", " + numberWithCommas(player.trade.treasure.value) + " gold)<br>"
+                        } else {
+                            html += "Treasure: none<br>"
+                        }
+                        html += "Item: " + player.trade.item + "<br>" +
+                            "Gold: " + numberWithCommas(player.trade.gold) + "<br>" +
+                            "<br>And you offered:<br>"
+                        if(initiator.trade.treasure !== "none") {
+                            html += "Treasure: " + initiator.trade.treasure.name + " (" + initiator.trade.treasure.rarity + ", " + numberWithCommas(initiator.trade.treasure.value) + " gold)<br>"
+                        } else {
+                            html += "Treasure: none<br>"
+                        }
+                        html += "Item: " + initiator.trade.item + "<br>" +
+                            "Gold: " + numberWithCommas(initiator.trade.gold) + "<br>"
+                        io.to(`${initiator.id}`).emit("confirmTrade", {
+                            title: "Confirm trade",
+                            html: html,
+                            showCancelButton: true
+                        })
+                        writeFB()
+                    } else {
+                        player.trade = null
+                        initiator.trade = null
+                        socket.emit("alert", "Trade canceled.")
+                        io.to(`${initiator.id}`).emit("alert", "Trade was canceled.")
+                        writeFB()
+                    }
+                }
+            } else {
+                socket.emit("alert", "Bad input.")
+            }
+        }
+    })
+    socket.on("completeTrade", function(accept) {
+        var player = getPlayerById(socket.id)
+        if (player) {
+            if(player.trade) {
+                var targetPlayer = findObjectByKey(players, "username", player.trade.with)
+                if(targetPlayer.trade && targetPlayer.trade.with === player.username) {
+                    var playerValid = true//(player.trade.item === "none" || findObjectByKey(player.items, "name", player.trade.item)) && (player.trade.treasure === "none" || findObjectByKey(player.treasure, "name", player.trade.treasure.name)) && (!player.trade.gold || player.gold >= player.trade.gold)
+                    var targetValid = true//(targetPlayer.trade.item === "none" || findObjectByKey(targetPlayer.items, "name", targetPlayer.trade.item)) && (targetPlayer.trade.treasure === "none" || findObjectByKey(targetPlayer.treasure, "name", targetPlayer.trade.treasure.name)) && (!targetPlayer.trade.gold || targetPlayer.gold >= targetPlayer.trade.gold)
+                    //console.log((targetPlayer.trade.treasure === "none" || findObjectByKey(targetPlayer.treasure, "name", targetPlayer.trade.treasure.name)))
+                    //console.log("ready for complete?", player.trade, targetPlayer.trade, playerValid, targetValid)
+                    if(playerValid && targetValid) {
+                        //good
+                        if(accept) {
+                            if(player.trade.item !== "none") {
+
+                                addItem(targetPlayer, player.trade.item)
+                            }
+                            if(player.trade.treasure !== "none") {
+
+                                if (!targetPlayer.treasure || targetPlayer.treasure === "none")
+                                    targetPlayer.treasure = []
+                                targetPlayer.treasure.push(player.trade.treasure)
+                            }
+
+                            targetPlayer.gold += player.trade.gold
+
+                            if(targetPlayer.trade.item !== "none") {
+                                addItem(player, targetPlayer.trade.item)
+                            }
+                            if(targetPlayer.trade.treasure !== "none") {
+                                if (!player.treasure || player.treasure === "none")
+                                    player.treasure = []
+                                player.treasure.push(targetPlayer.trade.treasure)
+                            }
+
+                            player.gold += targetPlayer.trade.gold
+
+                            player.trade = null
+                            targetPlayer.trade = null
+                            writeFB()
+                            socket.emit("chatUpdate", "Trade successful.")
+                            io.to(`${targetPlayer.id}`).emit("chatUpdate", "Trade successful.")
+                            socket.emit("getTreasures", player.treasure)
+                            io.to(`${targetPlayer.id}`).emit("getTreasures", targetPlayer.treasure)
+                            socket.emit("getItems", player.items, player.gold)
+                            io.to(`${targetPlayer.id}`).emit("getItems", targetPlayer.items, targetPlayer.gold)
+
+                        } else {
+                            player.gold += player.trade.gold + 100
+                            if(player.trade.item)
+                                addItem(player, player.trade.item)
+                            if(!player.treasure || player.treasure === "none")
+                                player.treasure = []
+                            if(player.trade.treasure !== "none")
+                                player.treasure.push(player.trade.treasure)
+
+                            targetPlayer.gold += targetPlayer.trade.gold
+                            if(targetPlayer.trade.item)
+                                addItem(targetPlayer, targetPlayer.trade.item)
+                            if(!targetPlayer.treasure || targetPlayer.treasure === "none")
+                                targetPlayer.treasure = []
+                            if(targetPlayer.trade.treasure !== "none")
+                                targetPlayer.treasure.push(targetPlayer.trade.treasure)
+                            player.trade = null
+                            targetPlayer.trade = null
+                            writeFB()
+                            socket.emit("alert", "Trade was cancelled.")
+                            io.to(`${targetPlayer.id}`).emit("alert", "Trade was cancelled.")
+                        }
+                    }
                 }
             }
         }
@@ -684,7 +920,15 @@ function addItem(player, name) {
     }
     writeFB()
 }
-
+function removeItem(player, name) {
+    console.log("before: ", player.items)
+    player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", name)), 1)
+    console.log("after: ", player.items)
+    if (player.id) {
+        io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+    }
+    writeFB()
+}
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
 }
@@ -899,4 +1143,12 @@ function generateTreasure() {
         treasure.name = sentencer.make(type + " {{noun}}")
     }
     return treasure
+}
+function hex_to_ascii(str1) {
+    var hex = str1.toString();
+    var str = '';
+    for (var n = 0; n < hex.length; n += 2) {
+        str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
+    }
+    return str;
 }

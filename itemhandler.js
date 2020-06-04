@@ -23,6 +23,7 @@ switch(itemname) {
         } else {
             player.gold += amount
         }
+        removeItem(player, "solid gold block")
         socket.emit("alert", "Big Money", "You auctioned your solid gold block for a sweet " + numberWithCommas(amount) + " gold!")
         writeFB()
         break
@@ -38,10 +39,12 @@ switch(itemname) {
             if (treasure.rarity === "legendary") {
                 socket.emit("chatUpdate", "<b>" + player.username + " found a legendary " + treasure.name + "!</b>")
             }
+
             writeFB()
         } else {
             socket.emit("alert", {title:"Better luck next time.", html: "That treasure chest had nothing in it but a whole lot of air."})
         }
+        removeItem(player, "treasure chest")
     break
     default:
         socket.emit("alert", "Can't use that.")
@@ -58,3 +61,4 @@ function validateParams(params) {
     }
     return count === item.params.length
 }
+

@@ -1,0 +1,12 @@
+if(targetPlayer.trade.item !== "none") {
+                                removeItem(targetPlayer, targetPlayer.trade.item)
+                                addItem(player, targetPlayer.trade.item)
+                            }
+                            if(targetPlayer.trade.treasure !== "none") {
+                                targetPlayer.treasure.splice(targetPlayer.treasure.indexOf(findObjectByKey(targetPlayer.treasure, "name", targetPlayer.trade.treasure.name)), 1)
+                                if (!player.treasure || player.treasure === "none")
+                                    player.treasure = []
+                                player.treasure.push(targetPlayer.trade.treasure)
+                            }
+                            targetPlayer.gold -= targetPlayer.trade.gold
+                            player.gold += targetPlayer.trade.gold

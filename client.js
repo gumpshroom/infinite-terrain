@@ -621,6 +621,35 @@ socket.on("authenticated", function() {
             }
         })
     })
+    socket.on("onTradeRequest", function(content, player) {
+        Swal.fire(content).then(function(result) {
+            var obj
+            if(result) {
+                obj = {
+                    accept: true,
+                    treasure: $("#treasureSel").val(),
+                    item: $("#itemSel").val(),
+                    gold: $("#goldSel").val(),
+                    target: player
+                }
+            } else {
+                obj = {
+                    acccept: false,
+                    target: player
+                }
+            }
+            socket.emit("confirmAddToTrade", obj)
+        })
+    })
+    socket.on("confirmTrade", function(content) {
+        Swal.fire(content).then(function(result) {
+            if(result) {
+                socket.emit("completeTrade", true)
+            } else {
+                socket.emit("completeTrade", false)
+            }
+        })
+    })
 })
 var i = 0;
 function move(time) {
