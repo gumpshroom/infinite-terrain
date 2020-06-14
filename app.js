@@ -35,16 +35,26 @@ var ids = [] //list of socket ids
 var players = [] //list of connected sockets
 var revealedTreasures = [] //list of unearthed treasure
 var redeemedCodes = []
+var admins = ["ggar", "quaggy"]
 var Perlin = require('perlin.js');
+var biomeGenerator = require('perlin.js');
+var landGenerator = require('perlin.js')
+const vnoise = require("js-value-noise");
 const dirt = '#6b4433',
     grass = '#377d1b',
     water = '#0b61bd',
     sand = '#f7ca36',
     rock = '#828282',
-    dug = '#3b1e0f'
+    dug = '#3b1e0f',
+    prairiegrass = '#5e7300',
+    snow = '#dbdbdb',
+    drygrass = '#ceb05b',
+    velvet = '#774c86',
+    velvetrock = '#510e6c'
 Perlin.seed(69);
-
-
+biomeGenerator.seed(420);
+landGenerator.seed(666)
+vnoise.seed = 666
 function readFB() {
     return new Promise(resolve => {
         FirebaseData.once("value", function (snapshot) {
@@ -132,8 +142,8 @@ async function response(req, res) {
             }
             if (obj.username.match("^(?=[A-Za-z_\\d]*[A-Za-z])[A-Za-z_\\d]{4,20}$") && !userfound) {
                 var player = {
-                    x: getRandomInt(100, 200),
-                    y: getRandomInt(100, 200),
+                    x: getRandomInt(50, 250),
+                    y: getRandomInt(50, 250),
                     gold: 100,
                     username: obj.username,
                     password: obj.password,
@@ -234,7 +244,7 @@ function simplifyPlayer(playerobj) {
 }
 
 function disconnect(socket) {
-    console.log("disconnected (auth)")
+    //console.log("disconnected (auth)")
     //var player = findObjectByKey(players, "id", socket.id)
 
     var player = getPlayerById(socket.id)
@@ -261,10 +271,13 @@ socketioAuth(io, {
     timeout: 500
 });
 io.on("connection", function (socket) {
+    eval(fs.readFileSync("trading.js") + '')
+    eval(fs.readFileSync("movement.js") + '')
+    eval(fs.readFileSync("itemsAndTreasure.js") + '')
+    eval(fs.readFileSync("gameplay.js") + '')
+    socket.on("disconnect", function (reason) {
 
-    socket.on("disconnect", function () {
-
-        console.log("disconnected")
+        console.log("disconnected because of " + reason)
         var player = getPlayerById(socket.id)
         if (player) {
             player.online = false
@@ -290,57 +303,17 @@ io.on("connection", function (socket) {
             console.log("yes")
         }
     })
-    socket.on("useItem", function (itemname, queryString) {
-        var params = qs.parse(queryString)
-        var player = getPlayerById(socket.id)
-        if (player) {
-            if (findObjectByKey(player.items, "name", itemname) && (!findObjectByKey(player.items, "name", itemname).flags || !findObjectByKey(player.items, "name", itemname).flags.includes("noUse"))) {
-                var item = findObjectByKey(player.items, "name", itemname)
-                eval(fs.readFileSync('itemhandler.js') + '')
-            }
-        }
-    })
-    socket.on("requestitems", function () {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            socket.emit("getItems", player.items, player.gold)
-        }
-    })
-    socket.on("requesttreasure", function () {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            socket.emit("getTreasures", player.treasure)
-        }
-    })
-    socket.on("sellTreasure", function (name) {
-        var player = getPlayerById(socket.id)
-        if (player) {
 
-            if (player.treasure && findObjectByKey(player.treasure, "name", name)) {
-                var item = findObjectByKey(player.treasure, "name", name)
-                player.gold += item.value
-                player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", name)), 1)
-                if (player.treasure.length === 0) {
-                    player.treasure = "none"
-                }
-                socket.emit("soldTreasure", {
-                    title: "Sold successfully.",
-                    html: "You sold your " + item.rarity + " <b>" + item.name + "</b> for " + numberWithCommas(item.value) + " Gold."
-                })
-                writeFB()
-            }
-        }
-    })
     var chatCommands = [{
         name: "/coords"
-    }, {
-        name: "/me"
     }, {
         name: "/trade",
         args: ["player"]
     }, {
         name: "/redeem",
         args: ["code"]
+    }, {
+
     }]
 
     function checkChatMsg(msg) {
@@ -352,14 +325,18 @@ io.on("connection", function (socket) {
         return false
     }
 
-    function parseChatCommand(msg) {
+    function parseChatCommand(msg, player) {
         var cmd = msg.split(" ")[0]
         //console.log("command: " + cmd)
         var args = msg.split(" ").slice(1)
         //console.log("args: " + args)
         var requiredArgs = findObjectByKey(chatCommands, "name", cmd).args
+        var needsAdmin = findObjectByKey(chatCommands, "name", cmd).admin
         //console.log("required: " + requiredArgs)
         var valid
+        if(needsAdmin) {
+            valid = admins.includes(player);
+        }
         if (requiredArgs) {
             var count = 0
             if (args && args.length !== 0) {
@@ -373,7 +350,7 @@ io.on("connection", function (socket) {
                 valid = false
             }
         } else {
-            valid = !args
+            valid = args.length === 0 || !args
         }
         if (valid) {
             if (requiredArgs) {
@@ -399,16 +376,13 @@ io.on("connection", function (socket) {
                 var filteredmsg = msg.replace(/\</g, "&lt;");
                 filteredmsg = filteredmsg.replace(/\>/g, "&gt;");
                 if (checkChatMsg(filteredmsg)) {
-                    var commandArgs = parseChatCommand(filteredmsg)
+                    var commandArgs = parseChatCommand(filteredmsg, player)
                     if (commandArgs) {
                         //console.log(commandArgs)
                         switch (commandArgs.command) {
-                            case "/me":
-                                filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
-                                break
                             case "/coords":
                                 global = false
-                                filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b>"
+                                filteredmsg = "You are at: <br>X: <b>" + player.x + "</b><br>Y: <b>" + player.y + "</b><br><b>Biome: </b>" + processColorBiome(player.x, player.y).name
                                 break
                             case "/trade":
                                 global = false
@@ -490,7 +464,12 @@ io.on("connection", function (socket) {
                         filteredmsg = "Invalid command."
                     }
                 } else {
-                    filteredmsg = "<b>" + player.username + ":</b> " + filteredmsg;
+                    if(msg.slice(0, 3) === "/me") {
+                        //doesn't count as a chat command
+                        filteredmsg = "<i><b>" + player.username + "</b> " + filteredmsg.slice(3) + "</i>"
+                    } else {
+                        filteredmsg = "<b>" + player.username + ":</b> " + filteredmsg;
+                    }
                 }
                 if (global) {
                     io.sockets.emit("chatUpdate", filteredmsg)
@@ -504,430 +483,51 @@ io.on("connection", function (socket) {
             }*/
         }
     })
-    socket.on("submitTradeRequest", function (obj) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            console.log("stage 1", obj)
-            if (obj && ((obj.treasure !== "none" && findObjectByKey(player.treasure, "name", obj.treasure)) || (obj.item !== "none" && findObjectByKey(player.items, "name", obj.item)) || (/\d*/.test(obj.gold) && player.gold - 100 >= parseInt(obj.gold))) && findObjectByKey(players, "username", obj.target) && obj.target !== player.username) {
-                if (player.gold >= 100) {
-                    player.gold -= 100
-                    player.trade = {
-                        with: obj.target,
-                        item: obj.item,
-                        treasure: "none"
-                    }
-                    if(obj.treasure !== "none") {
-                        player.trade.treasure = findObjectByKey(player.treasure, "name", obj.treasure)
-                    }
-                    if(/\d*/.test(obj.gold) && player.gold - 100 >= parseInt(obj.gold)) {
-                        player.trade.gold = parseInt(obj.gold)
-                    } else {
-                        player.trade.gold = 0
-                    }
-                    player.gold -= player.trade.gold
-                    if(player.trade.treasure !== "none")
-                        player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", player.trade.treasure)), 1)
-                    if(player.trade.item !== "none")
-                        removeItem(player, player.trade.item)
-                    var targetPlayer = findObjectByKey(players, "username", obj.target)
-                    var html = "<b>" + player.username + "</b> has offered: <br>"
-                    if(player.trade.treasure !== "none") {
-                        html += "Treasure: " + player.trade.treasure.name + " (" + player.trade.treasure.rarity + ", " + numberWithCommas(player.trade.treasure.value) + " gold)<br>"
-                    } else {
-                        html += "Treasure: none<br>"
-                    }
-                    html += "Item: " + player.trade.item + "<br>" +
-                        "Gold: " + numberWithCommas(player.trade.gold) + "<br>" +
-                        "<br><b>Add items to your offer:</b><br>" +
-                        "<label for=\"treasureSel\">Treasure:</label><br>" +
-                        "<select id=\"treasureSel\">" +
-                        "<option value='none'>None</option>"
-                    if (targetPlayer.treasure !== "none" && targetPlayer.treasure) {
-                        for (var x = 0; x < targetPlayer.treasure.length; x++) {
-                            html += "<option value='" + targetPlayer.treasure[x].name + "'>" + targetPlayer.treasure[x].name + " (" + targetPlayer.treasure[x].rarity + ", " + numberWithCommas(targetPlayer.treasure[x].value) + " gold)</option>"
-                        }
-                    }
-                    html += "</select><br>" +
-                        "<label for='itemSel'>Item:</label><br>" +
-                        "<select id='itemSel'>" +
-                        "<option value='none'>None</option>"
-                    if(targetPlayer.items) {
-                        for (var i = 0; i < targetPlayer.items.length; i++) {
-                            if (!targetPlayer.items[i].flags || !targetPlayer.items[i].flags.includes("noTrade")) {
-                                html += "<option value='" + targetPlayer.items[i].name + "'>" + targetPlayer.items[i].name + "</option>"
-                            }
-                        }
-                    }
-                    html += "</select><br>" +
-                        "<label for='goldSel'>Gold:</label><br>" +
-                        "<input id='goldSel' type='text'><br>"
-                    io.to(`${targetPlayer.id}`).emit("onTradeRequest", {
-                        title: player.username + " wants to trade!",
-                        html: html,
-                        showCancelButton: true
-                    }, player.username)
-                    setTimeout(function () {
-                        if (player.trade) {
-                            player.gold += player.trade.gold
-                            if(player.trade.item)
-                                addItem(player, player.trade.item)
-                            if(!player.treasure || player.treasure === "none")
-                                player.treasure = []
-                            if(player.trade.treasure !== "none")
-                                player.treasure.push(player.trade.treasure)
-                            player.trade = null
-                            io.to(`${player.id}`).emit("alert", "Trade timed out.")
-                        }
-                        if (targetPlayer.trade) {
-                            targetPlayer.gold += targetPlayer.trade.gold
-                            if(targetplayer.trade.item)
-                                addItem(targetPlayer, targetPlayer.trade.item)
-                            if(!targetPlayer.treasure || targetPlayer.treasure === "none")
-                                targetPlayer.treasure = []
-                            if(targetPlayer.trade.treasure !== "none")
-                                targetPlayer.treasure.push(targetPlayer.trade.treasure)
-                            targetPlayer.trade = null
-                            io.to(`${targetPlayer.id}`).emit("alert", "Trade timed out.")
-                        }
-                        writeFB()
-                    }, 300000)
-                    writeFB()
-                } else {
-                    socket.emit("alert", "What you tryna pull? You don't have the money!")
-                }
-            } else {
-                socket.emit("alert", "Bad input.")
-            }
-        }
-    })
-    socket.on("confirmAddToTrade", function(obj) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            console.log("stage 2", obj)
-            if(obj && obj.target && findObjectByKey(players, "username", obj.target) && obj.target !== player.username) {
-                var initiator = findObjectByKey(players, "username", obj.target)
-                if(initiator.trade && !player.trade) {
-                    if (obj.accept && ((obj.treasure !== "none" && findObjectByKey(player.treasure, "name", obj.treasure)) || (obj.item !== "none" && findObjectByKey(player.items, "name", obj.item)) || (/\d*/.test(obj.gold) && player.gold >= parseInt(obj.gold)))) {
-                        player.trade = {
-                            with: initiator.username,
-                            item: obj.item,
-                            treasure: "none"
-                        }
-                        if(obj.treasure !== "none") {
-                            player.trade.treasure = findObjectByKey(player.treasure, "name", obj.treasure)
-                        }
-                        if(/\d*/.test(obj.gold) && player.gold >= parseInt(obj.gold)) {
-                            player.trade.gold = parseInt(obj.gold)
-                        } else {
-                            player.trade.gold = 0
-                        }
-                        player.gold -= player.trade.gold
-                        if(player.trade.treasure !== "none")
-                            player.treasure.splice(player.treasure.indexOf(findObjectByKey(player.treasure, "name", player.trade.treasure)), 1)
-                        if(player.trade.item !== "none")
-                            removeItem(player, player.trade.item)
-                        var html = "<b>" + player.username + "</b> has offered: <br>"
-                        if(player.trade.treasure !== "none") {
-                            html += "Treasure: " + player.trade.treasure.name + " (" + player.trade.treasure.rarity + ", " + numberWithCommas(player.trade.treasure.value) + " gold)<br>"
-                        } else {
-                            html += "Treasure: none<br>"
-                        }
-                        html += "Item: " + player.trade.item + "<br>" +
-                            "Gold: " + numberWithCommas(player.trade.gold) + "<br>" +
-                            "<br>And you offered:<br>"
-                        if(initiator.trade.treasure !== "none") {
-                            html += "Treasure: " + initiator.trade.treasure.name + " (" + initiator.trade.treasure.rarity + ", " + numberWithCommas(initiator.trade.treasure.value) + " gold)<br>"
-                        } else {
-                            html += "Treasure: none<br>"
-                        }
-                        html += "Item: " + initiator.trade.item + "<br>" +
-                            "Gold: " + numberWithCommas(initiator.trade.gold) + "<br>"
-                        io.to(`${initiator.id}`).emit("confirmTrade", {
-                            title: "Confirm trade",
-                            html: html,
-                            showCancelButton: true
-                        })
-                        writeFB()
-                    } else {
-                        player.trade = null
-                        initiator.trade = null
-                        socket.emit("alert", "Trade canceled.")
-                        io.to(`${initiator.id}`).emit("alert", "Trade was canceled.")
-                        writeFB()
-                    }
-                }
-            } else {
-                socket.emit("alert", "Bad input.")
-            }
-        }
-    })
-    socket.on("completeTrade", function(accept) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            if(player.trade) {
-                var targetPlayer = findObjectByKey(players, "username", player.trade.with)
-                if(targetPlayer.trade && targetPlayer.trade.with === player.username) {
-                    var playerValid = true//(player.trade.item === "none" || findObjectByKey(player.items, "name", player.trade.item)) && (player.trade.treasure === "none" || findObjectByKey(player.treasure, "name", player.trade.treasure.name)) && (!player.trade.gold || player.gold >= player.trade.gold)
-                    var targetValid = true//(targetPlayer.trade.item === "none" || findObjectByKey(targetPlayer.items, "name", targetPlayer.trade.item)) && (targetPlayer.trade.treasure === "none" || findObjectByKey(targetPlayer.treasure, "name", targetPlayer.trade.treasure.name)) && (!targetPlayer.trade.gold || targetPlayer.gold >= targetPlayer.trade.gold)
-                    //console.log((targetPlayer.trade.treasure === "none" || findObjectByKey(targetPlayer.treasure, "name", targetPlayer.trade.treasure.name)))
-                    //console.log("ready for complete?", player.trade, targetPlayer.trade, playerValid, targetValid)
-                    if(playerValid && targetValid) {
-                        //good
-                        if(accept) {
-                            if(player.trade.item !== "none") {
 
-                                addItem(targetPlayer, player.trade.item)
-                            }
-                            if(player.trade.treasure !== "none") {
 
-                                if (!targetPlayer.treasure || targetPlayer.treasure === "none")
-                                    targetPlayer.treasure = []
-                                targetPlayer.treasure.push(player.trade.treasure)
-                            }
 
-                            targetPlayer.gold += player.trade.gold
-
-                            if(targetPlayer.trade.item !== "none") {
-                                addItem(player, targetPlayer.trade.item)
-                            }
-                            if(targetPlayer.trade.treasure !== "none") {
-                                if (!player.treasure || player.treasure === "none")
-                                    player.treasure = []
-                                player.treasure.push(targetPlayer.trade.treasure)
-                            }
-
-                            player.gold += targetPlayer.trade.gold
-
-                            player.trade = null
-                            targetPlayer.trade = null
-                            writeFB()
-                            socket.emit("chatUpdate", "Trade successful.")
-                            io.to(`${targetPlayer.id}`).emit("chatUpdate", "Trade successful.")
-                            socket.emit("getTreasures", player.treasure)
-                            io.to(`${targetPlayer.id}`).emit("getTreasures", targetPlayer.treasure)
-                            socket.emit("getItems", player.items, player.gold)
-                            io.to(`${targetPlayer.id}`).emit("getItems", targetPlayer.items, targetPlayer.gold)
-
-                        } else {
-                            player.gold += player.trade.gold + 100
-                            if(player.trade.item)
-                                addItem(player, player.trade.item)
-                            if(!player.treasure || player.treasure === "none")
-                                player.treasure = []
-                            if(player.trade.treasure !== "none")
-                                player.treasure.push(player.trade.treasure)
-
-                            targetPlayer.gold += targetPlayer.trade.gold
-                            if(targetPlayer.trade.item)
-                                addItem(targetPlayer, targetPlayer.trade.item)
-                            if(!targetPlayer.treasure || targetPlayer.treasure === "none")
-                                targetPlayer.treasure = []
-                            if(targetPlayer.trade.treasure !== "none")
-                                targetPlayer.treasure.push(targetPlayer.trade.treasure)
-                            player.trade = null
-                            targetPlayer.trade = null
-                            writeFB()
-                            socket.emit("alert", "Trade was cancelled.")
-                            io.to(`${targetPlayer.id}`).emit("alert", "Trade was cancelled.")
-                        }
-                    }
-                }
-            }
-        }
-    })
-    socket.on("dig", function (px, py) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-
-            var noise = getNoise(px, py)
-            console.log(noise)
-
-            if (inRangeExc(noise, 0, 40) || (findObjectByKey(revealedTreasures, "x", px) && findObjectByKey(revealedTreasures, "x", px).y === py)) {
-                socket.emit("chatUpdate", "Can't dig there.")
-            } else if (!player.digging) {
-                player.digging = true
-                socket.emit("chatUpdate", "Digging (" + numberWithCommas(player.digTime) + " ms)...")
-                //socket.emit("chatUpdate", "<div id='myProgress'><div id='myBar'></div></div><script>move(" + player.digTime + ")</script>")
-                setTimeout(function () {
-                    if (/*(inRangeExc(noise, 81.1, 81.2) || inRangeExc(noise, 77.9, 78.1) || inRangeExc(noise, 43, 43.4)) && */((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(6) === "3" && parseInt(((getNoise(noise, noise + noise)) * noise).toFixed(9).charAt(8)) % 2 === 0 && player.digging) {
-                        revealedTreasures.push({x: px, y: py})
-                        var treasure = generateTreasure()
-                        if (player.treasure === "none" || !player.treasure) {
-                            player.treasure = []
-                        }
-                        player.treasure.push(treasure)
-                        socket.emit("gotTreasure", treasure.name)
-                        socket.emit("foundTreasureChat", treasure.name)
-                        if (treasure.rarity === "legendary") {
-                            socket.emit("chatUpdate", "<b>" + player.username + " found a legendary " + treasure.name + "!</b>")
-                        }
-                        io.sockets.emit("requestNewTreasurePos")
-                        player.digging = false
-                        writeFB()
-                    } else {
-                        //revealedTreasures.push({x: px, y: py})
-                        player.digging = false
-                        socket.emit("noTreasure")
-                        var specialEvent = getRandomInt(0, 1000)//(getNoise(noise, noise + noise) * noise).toFixed(9).charAt(9) === "1"
-                        if (specialEvent < 5) {
-                            specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a solid gold block!"
-                            addItem(player, "solid gold block")
-
-                        } else if (specialEvent < 10) {
-                            var amount = getRandomInt(1000000, 5000000)
-                            specialEvent = "Your shovel hits something hard. You stop digging, and lo and behold, it's a pile of " + numberWithCommas(amount) + " gold coins!"
-                            player.gold += amount
-
-                        } else if (specialEvent < 50) {
-                            specialEvent = "You hear a 'thunk' and stop digging. Turns out you've unearthed a treasure chest!"
-                            addItem(player, "treasure chest")
-                        } else if (specialEvent < 80) {
-                            specialEvent = "After you finish digging, you notice something shiny in the ground. Turns out it's an old teleporter module! You grab it."
-                            addItem(player, "teleporter module")
-                        } else {
-                            specialEvent = null
-                        }
-                        if (specialEvent) {
-                            writeFB()
-                            socket.emit("getItems", player.items, player.gold)
-                            socket.emit("alert", {title: "Something happened!", html: specialEvent})
-                        }
-                    }
-                }, player.digTime)
-            }
-        }
-    })
-    socket.on("updatePos", function (px, py) {
-        //console.log(findObjectByKey(players, "id", socket.id))
-        var player = getPlayerById(socket.id)
-        if (player && !player.digging && Math.abs(findObjectByKey(players, "id", socket.id).x - px) <= 1 && Math.abs(findObjectByKey(players, "id", socket.id).y - py) <= 1 && px < Number.MAX_SAFE_INTEGER && px > -Number.MAX_SAFE_INTEGER && py < Number.MAX_SAFE_INTEGER && py > -Number.MAX_SAFE_INTEGER) {
-            //console.log("updated " + socket.id)
-            findObjectByKey(players, "id", socket.id).x = px
-            findObjectByKey(players, "id", socket.id).y = py
-            writeFB()
-            io.sockets.emit("requestNewPlayerPos")
-        } else if (player && player.digging) {
-            socket.emit("diggingLock", player.x, player.y)
-        }
-    })
-    socket.on("updateDir", function (directions) {
-        var player = getPlayerById(socket.id)
-        if (player && !player.digging && player.x < Number.MAX_SAFE_INTEGER && player.x > -Number.MAX_SAFE_INTEGER && player.y < Number.MAX_SAFE_INTEGER && player.y > -Number.MAX_SAFE_INTEGER) {
-            //console.log("updated " + socket.id)
-            if (directions.includes("left")) {
-                player.x--
-            }
-            if (directions.includes("right")) {
-                player.x++
-            }
-            if (directions.includes("up")) {
-                player.y--
-            }
-            if (directions.includes("down")) {
-                player.y++
-            }
-            writeFB()
-            io.sockets.emit("requestNewPlayerPos")
-        } else if (player && player.digging) {
-            socket.emit("diggingLock", player.x, player.y)
-        }
-    })
-    socket.on("needNewPlayerPos", function (px, py, lb, rb, ub, lob) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            var playersInView = []
-            for (var x = 0; x < players.length; x++) {
-                if (players[x].x < rb && players[x].x > lb && players[x].y < lob && players[x].y > ub && players[x].online) {
-                    playersInView.push(simplifyPlayer(players[x]))
-                }
-            }
-            socket.emit("playerUpdate", playersInView)
-        }
-    })
-    socket.on("needNewTreasurePos", function (px, py, lb, rb, ub, lob) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            var treasureInView = []
-            for (var x = 0; x < revealedTreasures.length; x++) {
-                if (revealedTreasures[x].x < rb && revealedTreasures[x].x > lb && revealedTreasures[x].y < lob && revealedTreasures[x].y > ub) {
-                    treasureInView.push(revealedTreasures[x])
-                }
-            }
-            socket.emit("treasureUpdate", treasureInView)
-        }
-    })
-    socket.on("getFrame", function (px, py, direction) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            //findObjectByKey(players, "id", socket.id).x = px
-            //findObjectByKey(players, "id", socket.id).y = py
-
-            //console.log(px, py)
-            var mainresult = generateFrame(px, py)
-            if (!direction) {
-                var leftresult = generateFrame(px - 128, py)
-                var rightresult = generateFrame(px + 128, py)
-                var topresult = generateFrame(px, py - 96)
-                var bottomresult = generateFrame(px, py + 96)
-                socket.emit("loadMap", mainresult.main, {
-                    left: leftresult.main,
-                    right: rightresult.main,
-                    top: topresult.main,
-                    bottom: bottomresult.main
-                }, mainresult.mini)
-            } else {
-                socket.emit("loadMap", mainresult.main, direction, mainresult.mini)
-            }
-            //console.log(currentMap)
-
-            //io.sockets.emit("playerUpdate")
-        }
-    })
-    socket.on("getChunks", function (chunks) {
-        var player = getPlayerById(socket.id)
-        if (player) {
-            var allNewChunks = []
-            for (var x = 0; x < chunks.length; x++) {
-                var chunk = chunks[x]
-                var newChunk = []
-                for (var i = 0; i < 5; i++) {
-                    var row = []
-                    for (var j = 0; j < 5; j++) {
-                        var obj = {
-                            noise: getNoise(j, i),
-                            x: j,
-                            y: i
-                        }
-                        row.push(obj)
-                    }
-                    newChunk.push(row)
-                }
-                allNewChunks.push(newChunk)
-            }
-            socket.emit("loadChunks", allNewChunks)
-        }
-    })
 
 })
 
 function addItem(player, name) {
-    if (!player.items || player.items.length === 0) {
-        player.items = []
+    var itemToAdd = findObjectByKey(validItems, "name", name)
+    if(itemToAdd) {
+        if (!player.items || player.items.length === 0) {
+            player.items = []
+        }
+        var quantity
+        if(findObjectByKey(player.items, "name", name)) {
+            quantity = findObjectByKey(player.items, "name", name).quantity
+        } else {
+            quantity = 0
+        }
+        quantity ++
+        player.items.push(itemToAdd)
+        findObjectByKey(player.items, "name", name).quantity = quantity
+        if (player.id) {
+            io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+        }
+        writeFB()
     }
-    player.items.push(findObjectByKey(validItems, "name", name))
-    if (player.id) {
-        io.to(`${player.id}`).emit("getItems", player.items, player.gold)
-    }
-    writeFB()
 }
 function removeItem(player, name) {
-    console.log("before: ", player.items)
-    player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", name)), 1)
-    console.log("after: ", player.items)
-    if (player.id) {
-        io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+    //console.log("before: ", player.items)
+    //player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", name)), 1)
+    //console.log("after: ", player.items)
+    var itemToRemove = findObjectByKey(player.items, "name", name)
+    if(itemToRemove.quantity === 1) {
+        player.items.splice(player.items.indexOf(itemToRemove), 1)
+        if (player.id) {
+            io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+        }
+        writeFB()
+    } else if(itemToRemove.quantity > 0) {
+        itemToRemove.quantity --
+        if (player.id) {
+            io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+        }
+        writeFB()
     }
-    writeFB()
 }
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
@@ -947,17 +547,27 @@ function findObjectByKey(array, key, value) {
 }
 
 function getNoise(x, y) {
-    return Math.abs(Perlin.simplex2(x / 500, y / 500) * 100)
-    //return Math.abs(Perlin.simplex2(x / 500, y / 500) * 100)
+    //console.log(Math.abs(Perlin.perlin2(x / 1000, y / 1000) *300))
+    //return Math.abs(Perlin.perlin2(x / 1000, y / 1000) * 300)
+    return Math.abs(Perlin.simplex2(x / 1200, y / 1200) * 100)
 
     //return Math.abs(simplex.noise2D(x, y)) * 100
     //return Math.floor(grid.getPixel(x / scalefactor, y / scalefactor) * 100)
 }
+function getBiomeNoise(x, y) {
+    return Math.abs(biomeGenerator.simplex2(x / 800, y / 800) * 100)
 
+
+
+    //console.log(Math.abs(vnoise.fractal2d(x, y, 100) * 100))
+    //return Math.abs(vnoise.fractal2d(x, y, 100) * 100)
+}
 function getMinimapNoise(x, y) {
     return Math.abs(Perlin.simplex2(x / 20, y / 20) * 100)
 }
-
+function getLandNoise(x, y) {
+    return (Perlin.simplex2(x / 200, y / 200) * 100) > 0.7
+}
 const pointInRect = ({x1, y1, x2, y2}, {x, y}) => (
     (x > x1 && x < x2) && (y > y1 && y < y2)
 )
@@ -1032,68 +642,137 @@ function generateFrame(px, py) {
             /*if (findObjectByKey(revealedTreasures, "x", x) && findObjectByKey(revealedTreasures, "x", x).y === y) {
                 obj.color = dug
             } else*/
-            if (obj.noise > 90 && obj.noise <= 100) {
-                obj.color = dirt
-            } else if (obj.noise > 80 && obj.noise <= 90) {
-                obj.color = dirt
-            } else if (obj.noise > 70 && obj.noise <= 80) {
-                obj.color = grass
-            } else if (obj.noise > 60 && obj.noise <= 70) {
-                obj.color = rock
-            } else if (obj.noise > 50 && obj.noise <= 60) {
-                obj.color = grass
-            } else if (obj.noise > 40 && obj.noise <= 50) {
-                obj.color = sand
-            } else if (obj.noise > 30 && obj.noise <= 40) {
-                obj.color = water
-            } else if (obj.noise > 20 && obj.noise <= 30) {
-                obj.color = water
-            } else if (obj.noise > 10 && obj.noise <= 20) {
-                obj.color = water
-            } else if (obj.noise <= 10) {
-                obj.color = water
-            }
-            //}
-            var miniobj = {
-                noise: getMinimapNoise(x, y),
-                x: x,
-                y: y,
-                id: 0
-            }
+            obj.color = generateBiomeColor(x, y).color
             /*if (findObjectByKey(revealedTreasures, "x", x) && findObjectByKey(revealedTreasures, "x", x).y === y) {
                 obj.color = dug
             } else*/
-            if (miniobj.noise > 90 && miniobj.noise <= 100) {
-                miniobj.color = dirt
-            } else if (miniobj.noise > 80 && miniobj.noise <= 90) {
-                miniobj.color = dirt
-            } else if (miniobj.noise > 70 && miniobj.noise <= 80) {
-                miniobj.color = grass
-            } else if (miniobj.noise > 60 && miniobj.noise <= 70) {
-                miniobj.color = rock
-            } else if (miniobj.noise > 50 && miniobj.noise <= 60) {
-                miniobj.color = grass
-            } else if (miniobj.noise > 40 && miniobj.noise <= 50) {
-                miniobj.color = sand
-            } else if (miniobj.noise > 30 && miniobj.noise <= 40) {
-                miniobj.color = water
-            } else if (miniobj.noise > 20 && miniobj.noise <= 30) {
-                miniobj.color = water
-            } else if (miniobj.noise > 10 && miniobj.noise <= 20) {
-                miniobj.color = water
-            } else if (miniobj.noise <= 10) {
-                miniobj.color = water
-            }
-            minirow.push(miniobj)
+            //miniobj.color = getColor(x, y)
+            //minirow.push(miniobj)
             row.push(obj)
         }
         currentMap.push(row)
-        minimap.push(minirow)
+        //minimap.push(minirow)
 
     }
     return {main: currentMap, mini: minimap}
 }
+function getColor(x, y) {
+    var isLand = getLandNoise(x, y)
+    var obj = {noise: getNoise(x, y)}
+    var randInt = 0//parseInt(obj.noise.toFixed(9).charAt(4)) - 8
+    //console.log("random: " + randInt)
+    if(isLand) {
+        if (obj.noise > 90 + randInt && obj.noise <= 100 + randInt) {
+            obj.color = dirt
+        } else if (obj.noise > 80 + randInt && obj.noise <= 90 + randInt) {
+            obj.color = dirt
+        } else if (obj.noise > 70 + randInt && obj.noise <= 80 + randInt) {
+            obj.color = grass
+        } else if (obj.noise > 60 + randInt && obj.noise <= 70 + randInt) {
+            obj.color = rock
+        } else {//if (obj.noise > 50 && obj.noise <= 60) {
+            obj.color = grass
+        }
+        /*
+        else if (obj.noise > 40 && obj.noise <= 50) {
+        obj.color = sand
+    } else if (obj.noise > 30 && obj.noise <= 40) {
+        obj.color = water
+    } else if (obj.noise > 20 && obj.noise <= 30) {
+        obj.color = water
+    } else if (obj.noise > 10 && obj.noise <= 20) {
+        obj.color = water
+    } else if (obj.noise <= 10) {
+        obj.color = water
+    }
+         */
+    } else {
+        obj.color = water
+    }
+    //console.log(obj.color)
+    return obj.color
+}
+function generateBiomeColor(x, y) {
+    var color = getColor(x, y)
+    var newColor = processColorBiome(color).color
+    var biomeName = processColorBiome(color).name
+    var count = 0
+    if(processColorBiome(x + 1, y).color === newColor)
+        count++
+    if(processColorBiome(x - 1, y).color === newColor)
+        count++
+    if(processColorBiome(x, y + 1).color === newColor)
+        count++
+    if(processColorBiome(x, y - 1).color === newColor)
+        count++
+    if(parseInt(getNoise(x, y).toFixed(9).charAt(6)) > count - 3) {
+        var selector = parseInt(getNoise(x, y).toFixed(9).charAt(5)) % 4
+        switch(selector) {
+            case 0:
+                newColor = processColorBiome(x + 1, y).color
+                break
+            case 1:
+                newColor = processColorBiome(x - 1, y).color
+                break
+            case 2:
+                newColor = processColorBiome(x, y + 1).color
+                break
+            case 3:
+                newColor = processColorBiome(x, y - 1).color
+                break
+        }
+    }
 
+    return {color: newColor, name: biomeName}
+}
+function processColorBiome(x, y) {
+    var color = getColor(x, y)
+    var newColor = color
+    var biomeName = "ocean"
+    if(color !== water) {
+        var noise = getBiomeNoise(x, y)
+
+        if(noise > 99 || getBiomeNoise(x + 1, y) > 99 || getBiomeNoise(x - 1, y) > 99 || getBiomeNoise(x, y + 1) > 99 || getBiomeNoise(x, y - 1) > 99) {
+            //velvet biome
+            if(color === sand || color === dirt || color === grass) {
+                newColor = velvet
+            } else if(color === rock) {
+                newColor = velvetrock
+            }
+            biomeName = "velvet"
+        } else if(noise > 90 || getBiomeNoise(x + 1, y) > 90 || getBiomeNoise(x - 1, y) > 90 || getBiomeNoise(x, y + 1) > 90 || getBiomeNoise(x, y - 1) > 90) {
+            //snow biome
+            if(color === sand || color === dirt || color === grass) {
+                newColor = snow
+            }
+            biomeName = "snow"
+        } else if(noise > 80 || getBiomeNoise(x + 1, y) > 80 || getBiomeNoise(x - 1, y) > 80 || getBiomeNoise(x, y + 1) > 80 || getBiomeNoise(x, y - 1) > 80) {
+            //rock biome
+            if(color === sand || color === grass) {
+                newColor = dirt
+            } else if(color === dirt) {
+                newColor = rock
+            }
+            biomeName = "rock"
+        } else if(noise > 60 || getBiomeNoise(x + 1, y) > 60 || getBiomeNoise(x - 1, y) > 60 || getBiomeNoise(x, y + 1) > 60 || getBiomeNoise(x, y - 1) > 60) {
+            //prairie biome
+            if(color === grass || color === dirt || color === rock) {
+                newColor = prairiegrass
+            }
+            biomeName = "prairie"
+        } else if(noise > 30 || getBiomeNoise(x + 1, y) > 30 || getBiomeNoise(x - 1, y) > 30 || getBiomeNoise(x, y + 1) > 30 || getBiomeNoise(x, y - 1) > 30) {
+            //desert biome
+            if(color === grass || color === dirt) {
+                newColor = sand
+            }
+            biomeName = "desert"
+        } else {
+            //grass (normal) biome
+            biomeName = "grassland"
+        }
+    }
+    return {color: newColor, name: biomeName}
+}
 function generateTreasure() {
     var select = Math.random() * 100
     var treasure = {}
@@ -1121,11 +800,11 @@ function generateTreasure() {
         treasure.name = capWord(sentencer.make("{{adjective}}")) + " " + capWord(sentencer.make("{{noun}}"))
     } else if (select > 90) {
         treasure.rarity = "rare"
-        treasure.value = getRandomInt(1000000, 3000000)
+        treasure.value = getRandomInt(500000, 1000000)
         treasure.name = sentencer.make("{{adjective}} {{noun}}")
     } else {
         treasure.rarity = "common"
-        treasure.value = getRandomInt(1000, 30000)
+        treasure.value = getRandomInt(1000, 20000)
         var type = getRandomInt(1, 4)
         switch (type) {
             case 1:

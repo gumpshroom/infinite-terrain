@@ -4,7 +4,7 @@ switch(itemname) {
             if(!player.digging) {
                 player.x = parseInt(params.x)
                 player.y = parseInt(params.y)
-                player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", itemname)), 1)
+                removeItem(player, "teleporter module")
                 writeFB()
                 socket.emit("requestGetFrame", player.x, player.y)
                 socket.emit("itemsUpdated")
@@ -17,7 +17,7 @@ switch(itemname) {
         }
         break
     case "solid gold block":
-        var amount = getRandomInt(10000000, 50000000)
+        var amount = getRandomInt(1000000, 3000000)
         if(player.gold + amount >= Number.MAX_SAFE_INTEGER) {
             player.gold = Number.MAX_SAFE_INTEGER
         } else {

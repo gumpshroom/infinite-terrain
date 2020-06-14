@@ -398,7 +398,9 @@ function useItem(itemname, params) {
     }
 
 }
-
+socket.on('error', function(){
+    socket.socket.connect();
+});
 //socket.id = localStorage.getItem("transferToken")
 socket.emit("authentication", {u:localStorage.u, p: localStorage.p})
 
@@ -550,6 +552,7 @@ socket.on("authenticated", function() {
                 DOMitem.appendChild(p)
                 DOMitem.id = items[x].name
                 DOMitem.innerHTML += "<p><b>Description:</b> " + items[x].desc + "</p>"
+                DOMitem.innerHTML += "<p><b>Quantity:</b> " + numberWithCommas(items[x].quantity) + "</p>"
                 if(!items[x].flags || !items[x].flags.includes("noUse")) {
                     var sellButton = document.createElement("button")
                     sellButton.innerHTML = "Use"
@@ -610,7 +613,7 @@ socket.on("authenticated", function() {
     })
     socket.on("tradePopup", function(content, player) {
         Swal.fire(content).then(function(result) {
-            if(result) {
+            if(result.value) {
                 var obj = {
                     treasure: $("#treasureSel").val(),
                     item: $("#itemSel").val(),
@@ -624,7 +627,7 @@ socket.on("authenticated", function() {
     socket.on("onTradeRequest", function(content, player) {
         Swal.fire(content).then(function(result) {
             var obj
-            if(result) {
+            if(result.value) {
                 obj = {
                     accept: true,
                     treasure: $("#treasureSel").val(),
@@ -643,7 +646,7 @@ socket.on("authenticated", function() {
     })
     socket.on("confirmTrade", function(content) {
         Swal.fire(content).then(function(result) {
-            if(result) {
+            if(result.value) {
                 socket.emit("completeTrade", true)
             } else {
                 socket.emit("completeTrade", false)
