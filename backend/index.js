@@ -275,6 +275,7 @@ socketioAuth(io, {
     timeout: 500
 });
 io.on("connection", function (socket) {
+    console.log(fs.readdirSync("./"))
     eval(fs.readFileSync("trading.js") + '')
     eval(fs.readFileSync("movement.js") + '')
     eval(fs.readFileSync("itemsAndTreasure.js") + '')
