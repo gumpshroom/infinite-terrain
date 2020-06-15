@@ -18,7 +18,7 @@ var db = firebase.database();
 var FirebaseData = db.ref("data");
 var appdata = {};
 
-var validItems = JSON.parse(fs.readFileSync("./validitems.json", "utf8")).items
+var validItems = require("./validitems.json").items
 const socketioAuth = require("socketio-auth");
 const AES = require('crypto-js/aes')
 var transporter = nodemailer.createTransport({
