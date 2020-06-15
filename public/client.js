@@ -50,7 +50,7 @@ function setup() {
         if (!shouldHandleKeyDown) return;
         shouldHandleKeyDown = false;
         // HANDLE KEY DOWN HERE
-        if(e.key === 'n' && focus === "canvas") {
+        if(e.key === ' ' && focus === "canvas") {
             socket.emit("dig", px, py)
         }
     }
@@ -578,7 +578,7 @@ socket.on("authenticated", function() {
         }
         if(!treasure || treasure === "none") {
             var p = document.createElement("p")
-            p.innerText = "You have no treasure. Press N to dig for treasure."
+            p.innerText = "You have no treasure. Press Space to dig for treasure."
             treasureContainer.appendChild(p)
         } else {
             for(var x = 0; x < treasure.length; x++) {
