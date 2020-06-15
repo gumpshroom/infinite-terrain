@@ -276,10 +276,10 @@ socketioAuth(io, {
 });
 io.on("connection", function (socket) {
     console.log(fs.readdirSync("./"))
-    eval(fs.readFileSync("trading.js") + '')
-    eval(fs.readFileSync("movement.js") + '')
-    eval(fs.readFileSync("itemsAndTreasure.js") + '')
-    eval(fs.readFileSync("gameplay.js") + '')
+    eval(fs.readFileSync("backend/trading.js") + '')
+    eval(fs.readFileSync("backend/movement.js") + '')
+    eval(fs.readFileSync("backend/itemsAndTreasure.js") + '')
+    eval(fs.readFileSync("backend/gameplay.js") + '')
     socket.on("disconnect", function (reason) {
 
         console.log("disconnected because of " + reason)
