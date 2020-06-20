@@ -45,7 +45,10 @@ switch(itemname) {
             socket.emit("alert", {title:"Better luck next time.", html: "That treasure chest had nothing in it but a whole lot of air."})
         }
         removeItem(player, "treasure chest")
-    break
+        break
+    case "clagger":
+        
+        break
     default:
         socket.emit("alert", "Can't use that.")
         break

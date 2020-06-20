@@ -17,6 +17,34 @@
     {
       "name": "treasure chest",
       "desc": "Contains some treasure. Probably."
+    },
+    {
+      "name": "gumpshroom",
+      "desc": "This came from the ground. Apparently some cultures use this as a currency.",
+      "flags": ["noUse"]
+    },
+    {
+      "name": "quaggy",
+      "desc": "Similar to gumpshrooms, these are used as currency in a few cultures.",
+      "flags": ["noUse"]
+    },
+    {
+      "name": "Big Glick",
+      "desc": "what",
+      "flags": ["noUse"]
+    },
+    {
+      "name": "small round ball",
+      "desc": "This tiny orb is extremely smooth."
+    },
+    {
+      "name": "clagger",
+      "desc": "This rare and powerful weapon shoots blasts of pure energy, making everything move much faster."
+    },
+    {
+      "name": "blast cartridge",
+      "desc": "Good for one (1) clagger shot.",
+      "flags": ["noUse"]
     }
   ]
 }

@@ -1,4 +1,3 @@
-
 var app = require('http').createServer(response);
 var fs = require('fs');
 var io = require('socket.io')(app, {pingTimeout: 10000})
@@ -21,6 +20,12 @@ var appdata = {};
 var validItems = require("./validitems.json").items
 const socketioAuth = require("socketio-auth");
 const AES = require('crypto-js/aes')
+
+const trading = (fs.readFileSync("./trading.js") + '')
+const movement = (fs.readFileSync("./movement.js") + '')
+const itemsAndTreasure = (fs.readFileSync("./itemsAndTreasure.js") + '')
+const gameplay = (fs.readFileSync("./gameplay.js") + '')
+
 var transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
@@ -275,11 +280,11 @@ socketioAuth(io, {
     timeout: 500
 });
 io.on("connection", function (socket) {
-    console.log(fs.readdirSync("./"))
-    eval(fs.readFileSync("backend/trading.js") + '')
-    eval(fs.readFileSync("backend/movement.js") + '')
-    eval(fs.readFileSync("backend/itemsAndTreasure.js") + '')
-    eval(fs.readFileSync("backend/gameplay.js") + '')
+    eval(trading)
+    eval(movement)
+    eval(itemsAndTreasure)
+    eval(gameplay)
+
     socket.on("disconnect", function (reason) {
 
         console.log("disconnected because of " + reason)
@@ -319,7 +324,8 @@ io.on("connection", function (socket) {
         args: ["code"]
     }, {
         name: "/give",
-        args: ["player", "item"]
+        args: ["player", "amount", "item"],
+        admin: true
     }]
 
     function checkChatMsg(msg) {
@@ -342,7 +348,9 @@ io.on("connection", function (socket) {
         var valid
 
         if (requiredArgs) {
-            args = msg.split(" ", requiredArgs.length + 1).slice(1)
+            args = msg.split(" ").slice(1)
+            args[requiredArgs.length - 1] = args.slice(requiredArgs.length - 1).join(" ")
+            args = args.slice(0, requiredArgs.length)
             console.log("args: " + args)
             var count = 0
             if (args && args.length !== 0) {
@@ -360,6 +368,7 @@ io.on("connection", function (socket) {
         }
         if(needsAdmin) {
             valid = admins.includes(player.username);
+            console.log("admin verified: " + valid)
         }
         if (valid) {
             if (requiredArgs) {
@@ -465,11 +474,20 @@ io.on("connection", function (socket) {
                                     filteredmsg = "Invalid code."
                                 }
                                 break
-                            case "give":
+                            case "/give":
                                 global = false
-                                if(findObjectByKey(players, "name", commandArgs.player) && findObjectByKey(validItems, "name", commandArgs.item)) {
-                                    addItem(findObjectByKey(players, "name", commandArgs.player), commandArgs.item)
-                                    filteredmsg = "Gave " + commandArgs.item + " to " + commandArgs.player + "."
+                                //console.log(commandArgs)
+                                if(findObjectByKey(players, "username", commandArgs.player) && findObjectByKey(validItems, "name", commandArgs.item)) {
+                                    var target = findObjectByKey(players, "username", commandArgs.player)
+                                    var amt = 1
+                                    if(parseInt(commandArgs.amount) > 0)
+                                        amt = parseInt(commandArgs.amount)
+                                    console.log(amt)
+                                    addItem(target, commandArgs.item, amt)
+                                    filteredmsg = "Gave " + numberWithCommas(amt) + " " + commandArgs.item + " to " + commandArgs.player + "."
+                                    if(target.id) {
+                                        io.to(`${target.id}`).emit("chatUpdate", player.username + " has given you " + numberWithCommas(amt) + " " + commandArgs.item + ".")
+                                    }
                                     writeFB()
                                 } else {
                                     filteredmsg = "Bad input."
@@ -509,7 +527,8 @@ io.on("connection", function (socket) {
 
 })
 
-function addItem(player, name) {
+function addItem(player, name, amount) {
+
     var itemToAdd = findObjectByKey(validItems, "name", name)
     if(itemToAdd) {
         if (!player.items || player.items.length === 0) {
@@ -521,33 +540,39 @@ function addItem(player, name) {
         } else {
             quantity = 0
         }
-        quantity ++
-        player.items.push(itemToAdd)
-        findObjectByKey(player.items, "name", name).quantity = quantity
+        if(!amount) {
+            quantity ++
+        } else {
+            quantity += parseInt(amount)
+        }
+        if(quantity === 1) {
+            player.items.push(itemToAdd)
+        } else {
+            findObjectByKey(player.items, "name", name).quantity = quantity
+        }
         if (player.id) {
             io.to(`${player.id}`).emit("getItems", player.items, player.gold)
         }
         writeFB()
     }
 }
-function removeItem(player, name) {
+function removeItem(player, name, amount) {
     //console.log("before: ", player.items)
     //player.items.splice(player.items.indexOf(findObjectByKey(player.items, "name", name)), 1)
     //console.log("after: ", player.items)
     var itemToRemove = findObjectByKey(player.items, "name", name)
-    if(itemToRemove.quantity === 1) {
-        player.items.splice(player.items.indexOf(itemToRemove), 1)
-        if (player.id) {
-            io.to(`${player.id}`).emit("getItems", player.items, player.gold)
-        }
-        writeFB()
-    } else if(itemToRemove.quantity > 0) {
+    if(amount) {
+        itemToRemove.quantity -= parseInt(amount)
+    } else {
         itemToRemove.quantity --
-        if (player.id) {
-            io.to(`${player.id}`).emit("getItems", player.items, player.gold)
-        }
-        writeFB()
     }
+    if(itemToRemove.quantity < 2) {
+        player.items.splice(player.items.indexOf(itemToRemove), 1)
+    }
+    if (player.id) {
+        io.to(`${player.id}`).emit("getItems", player.items, player.gold)
+    }
+    writeFB()
 }
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
