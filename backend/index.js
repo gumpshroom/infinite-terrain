@@ -21,10 +21,10 @@ var validItems = require("./validitems.json").items
 const socketioAuth = require("socketio-auth");
 const AES = require('crypto-js/aes')
 
-const trading = (fs.readFileSync("./trading.js") + '')
-const movement = (fs.readFileSync("./movement.js") + '')
-const itemsAndTreasure = (fs.readFileSync("./itemsAndTreasure.js") + '')
-const gameplay = (fs.readFileSync("./gameplay.js") + '')
+const trading = (fs.readFileSync("trading.js") + '')
+const movement = (fs.readFileSync("movement.js") + '')
+const itemsAndTreasure = (fs.readFileSync("itemsAndTreasure.js") + '')
+const gameplay = (fs.readFileSync("gameplay.js") + '')
 
 var transporter = nodemailer.createTransport({
     service: 'gmail',
