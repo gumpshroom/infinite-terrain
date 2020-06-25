@@ -36,6 +36,7 @@ function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
 }
 function setup() {
+
     var cnv = createCanvas(640, 480);
     cnv.mouseClicked(function() {
         focus = "canvas"
@@ -423,7 +424,16 @@ socket.on("authenticated", function() {
         socket.emit("needNewTreasurePos", px, py, leftbound, rightbound, upbound, lowbound)
         socket.emit('getFrame', x, y)
         socket.emit("requesttreasure")
+        socket.emit("getEvents")
         localStorage.clear()
+    })
+    socket.on("receiveEvents", function(events) {
+        if(events) {
+            for (var x = 0; x < events.length; x++) {
+                var date = new Date(events[x].t)
+                addToChat("<b>[" + date.toLocaleString("en-US") + "]:</b> " + events[x].m)
+            }
+        }
     })
     socket.on("noTreasure", function() {
         addToChat("No treasure found.")

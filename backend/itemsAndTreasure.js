@@ -23,7 +23,6 @@ socket.on("requesttreasure", function () {
 socket.on("sellTreasure", function (name) {
     var player = getPlayerById(socket.id)
     if (player) {
-
         if (player.treasure && findObjectByKey(player.treasure, "name", name)) {
             var item = findObjectByKey(player.treasure, "name", name)
             player.gold += item.value
@@ -39,3 +38,4 @@ socket.on("sellTreasure", function (name) {
         }
     }
 })
+

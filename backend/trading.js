@@ -54,7 +54,7 @@ socket.on("submitTradeRequest", function (obj) {
                 }
                 html += "</select><br>" +
                     "<label for='goldSel'>Gold:</label><br>" +
-                    "<input id='goldSel' type='text'><br>"
+                    "<input id='goldSel' type='text' value='0'><br>"
                 io.to(`${targetPlayer.id}`).emit("onTradeRequest", {
                     title: player.username + " wants to trade!",
                     html: html,
@@ -196,7 +196,7 @@ socket.on("completeTrade", function(accept) {
                         targetPlayer.trade = null
                         writeFB()
                         socket.emit("chatUpdate", "Trade successful.")
-                        io.to(`${targetPlayer.id}`).emit("chatUpdate", "Trade successful.")
+                        sendMessageToPlayer(targetPlayer, "Trade successful.")
                         socket.emit("getTreasures", player.treasure)
                         io.to(`${targetPlayer.id}`).emit("getTreasures", targetPlayer.treasure)
                         socket.emit("getItems", player.items, player.gold)

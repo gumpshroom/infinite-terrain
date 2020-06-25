@@ -150,8 +150,8 @@ async function response(req, res) {
             }
             if (obj.username.match("^(?=[A-Za-z_\\d]*[A-Za-z])[A-Za-z_\\d]{4,20}$") && !userfound) {
                 var player = {
-                    x: getRandomInt(50, 250),
-                    y: getRandomInt(50, 250),
+                    x: getRandomInt(80, 120),
+                    y: getRandomInt(-20, 20),
                     gold: 100,
                     username: obj.username,
                     password: obj.password,
@@ -433,7 +433,7 @@ io.on("connection", function (socket) {
                                             }
                                             html += "</select><br>" +
                                                 "<label for='goldSel'>Gold:</label><br>" +
-                                                "<input id='goldSel' type='text'><br>"
+                                                "<input id='goldSel' type='text' value='0'><br>"
 
                                             socket.emit("tradePopup", {
                                                 title: "Initiating trade with " + commandArgs.player,
@@ -485,9 +485,8 @@ io.on("connection", function (socket) {
                                     console.log(amt)
                                     addItem(target, commandArgs.item, amt)
                                     filteredmsg = "Gave " + numberWithCommas(amt) + " " + commandArgs.item + " to " + commandArgs.player + "."
-                                    if(target.id) {
-                                        io.to(`${target.id}`).emit("chatUpdate", player.username + " has given you " + numberWithCommas(amt) + " " + commandArgs.item + ".")
-                                    }
+                                    sendMessageToPlayer(target, player.username + " has given you " + numberWithCommas(amt) + " " + commandArgs.item + ".")
+
                                     writeFB()
                                 } else {
                                     filteredmsg = "Bad input."
@@ -521,7 +520,14 @@ io.on("connection", function (socket) {
             }*/
         }
     })
-
+    socket.on("getEvents", function() {
+        var player = getPlayerById(socket.id)
+        if(player) {
+            socket.emit("receiveEvents", player.events)
+            player.events = []
+            writeFB()
+        }
+    })
 
 
 
@@ -531,6 +537,7 @@ function addItem(player, name, amount) {
 
     var itemToAdd = findObjectByKey(validItems, "name", name)
     if(itemToAdd) {
+
         if (!player.items || player.items.length === 0) {
             player.items = []
         }
@@ -545,7 +552,9 @@ function addItem(player, name, amount) {
         } else {
             quantity += parseInt(amount)
         }
-        if(quantity === 1) {
+        if(!findObjectByKey(player.items, "name", name)) {
+            itemToAdd = copyObject(itemToAdd)
+            itemToAdd.quantity = quantity
             player.items.push(itemToAdd)
         } else {
             findObjectByKey(player.items, "name", name).quantity = quantity
@@ -573,6 +582,17 @@ function removeItem(player, name, amount) {
         io.to(`${player.id}`).emit("getItems", player.items, player.gold)
     }
     writeFB()
+}
+function sendMessageToPlayer(target, msg) {
+    if(target.id && target.online) {
+        io.to(`${target.id}`).emit("chatUpdate", msg)
+    } else {
+        if(!target.events) {
+            target.events = []
+        }
+        target.events.push({m: msg, t: new Date().getTime()})
+        writeFB()
+    }
 }
 function isEmpty(obj) {
     return Object.keys(obj).length === 0;
@@ -850,7 +870,7 @@ function generateTreasure() {
     } else {
         treasure.rarity = "common"
         treasure.value = getRandomInt(1000, 20000)
-        var type = getRandomInt(1, 4)
+        var type = getRandomInt(1, 7)
         switch (type) {
             case 1:
                 type = "rusty"
@@ -860,6 +880,15 @@ function generateTreasure() {
                 break
             case 3:
                 type = "neglected"
+                break
+            case 4:
+                type = "forgotten"
+                break
+            case 5:
+                type = "broken"
+                break
+            case 6:
+                type = "battered"
                 break
             default:
                 break
